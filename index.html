@@ -1,0 +1,1317 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IDC Solar — Energia Solar pagando sua conta de luz</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #0F0E0C;
+  --cream: #F9F6EF;
+  --warm: #F2EDE0;
+  --solar: #E8930A;
+  --solar-pale: #FDF3E0;
+  --green: #1A7A58;
+  --green-pale: #E3F5EE;
+  --muted: #7A756A;
+  --border: #DDD8CC;
+  --white: #FFFFFF;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--cream);
+  color: var(--ink);
+  overflow-x: hidden;
+}
+
+/* ── HERO ── */
+.hero {
+  min-height: 100vh;
+  background: var(--ink);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.hero-bg {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse 80% 60% at 70% 40%, #2A1F00 0%, #0F0E0C 60%);
+}
+
+.sun-glow {
+  position: absolute;
+  right: -80px; top: -80px;
+  width: 520px; height: 520px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(232,147,10,0.22) 0%, rgba(232,147,10,0.08) 40%, transparent 70%);
+  animation: pulse 4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.05); opacity: 0.8; }
+}
+
+.sun-rings {
+  position: absolute;
+  right: 40px; top: 40px;
+  width: 300px; height: 300px;
+}
+.sun-rings circle {
+  fill: none;
+  stroke: rgba(232,147,10,0.15);
+  animation: spin 20s linear infinite;
+  transform-origin: center;
+}
+.sun-rings circle:nth-child(2) { animation-duration: 30s; animation-direction: reverse; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+nav {
+  position: relative; z-index: 10;
+  padding: 1.5rem 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logo {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--white);
+  letter-spacing: 0.02em;
+}
+.logo span { color: var(--solar); }
+
+.nav-cta {
+  background: var(--solar);
+  color: var(--ink);
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 8px 20px;
+  border-radius: 40px;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+.nav-cta:hover { opacity: 0.85; }
+
+.hero-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 3rem 2.5rem 4rem;
+  position: relative; z-index: 10;
+  max-width: 780px;
+  margin: 0 auto;
+}
+
+.eyebrow {
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--solar);
+  margin-bottom: 1.2rem;
+  display: flex; align-items: center; gap: 8px;
+}
+.eyebrow::before {
+  content: '';
+  display: block;
+  width: 28px; height: 1px;
+  background: var(--solar);
+}
+
+.hero h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(2.4rem, 5vw, 4rem);
+  font-weight: 900;
+  line-height: 1.1;
+  color: var(--white);
+  margin-bottom: 1.5rem;
+}
+
+.hero h1 em {
+  font-style: normal;
+  color: var(--solar);
+  position: relative;
+}
+
+.hero-sub {
+  font-size: 1.05rem;
+  font-weight: 300;
+  line-height: 1.7;
+  color: rgba(255,255,255,0.65);
+  max-width: 480px;
+  margin-bottom: 2.5rem;
+  text-align: center;
+}
+
+.hero-stats {
+  display: flex; gap: 2rem; flex-wrap: wrap;
+  margin-bottom: 2.5rem;
+  justify-content: center;
+}
+
+.stat {
+  display: flex; flex-direction: column;
+  gap: 2px;
+  align-items: center;
+}
+.stat-num {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--solar);
+}
+.stat-label {
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.5);
+  letter-spacing: 0.04em;
+}
+
+.hero-btns { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+
+.btn-primary {
+  background: var(--solar);
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-weight: 500;
+  font-family: 'DM Sans', sans-serif;
+  padding: 14px 28px;
+  border-radius: 50px;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s, opacity 0.15s;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.btn-primary:hover { transform: translateY(-1px); opacity: 0.9; }
+
+.btn-ghost {
+  background: transparent;
+  color: rgba(255,255,255,0.7);
+  font-size: 0.9rem;
+  font-weight: 400;
+  font-family: 'DM Sans', sans-serif;
+  padding: 14px 28px;
+  border-radius: 50px;
+  text-decoration: none;
+  border: 1px solid rgba(255,255,255,0.2);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.btn-ghost:hover { border-color: rgba(255,255,255,0.5); color: white; }
+
+.hero-scroll {
+  position: absolute;
+  bottom: 2rem; left: 50%;
+  transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  z-index: 10;
+  animation: bounce 2s ease-in-out infinite;
+}
+@keyframes bounce {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(6px); }
+}
+.hero-scroll span { font-size: 0.65rem; letter-spacing: 0.1em; color: rgba(255,255,255,0.3); text-transform: uppercase; }
+.hero-scroll svg { opacity: 0.3; }
+
+/* ── SIMULATOR ── */
+.simulator-section {
+  background: var(--white);
+  padding: 5rem 2rem;
+}
+
+.section-label {
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--solar);
+  margin-bottom: 0.8rem;
+}
+
+.section-title {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+  font-weight: 700;
+  text-align: center;
+  color: var(--ink);
+  line-height: 1.2;
+  margin-bottom: 0.6rem;
+}
+
+.section-sub {
+  text-align: center;
+  font-size: 0.95rem;
+  color: var(--muted);
+  font-weight: 300;
+  max-width: 480px;
+  margin: 0 auto 3rem;
+  line-height: 1.6;
+}
+
+.simulator {
+  max-width: 800px;
+  margin: 0 auto;
+  background: var(--cream);
+  border-radius: 20px;
+  padding: 2.5rem;
+  border: 1px solid var(--border);
+}
+
+.sim-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.sim-field { display: flex; flex-direction: column; gap: 8px; }
+
+.sim-field label {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--ink);
+  letter-spacing: 0.02em;
+}
+
+.sim-field input,
+.sim-field select {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-family: 'DM Sans', sans-serif;
+  background: var(--white);
+  color: var(--ink);
+  appearance: none;
+  transition: border-color 0.15s;
+}
+.sim-field input:focus,
+.sim-field select:focus {
+  outline: none;
+  border-color: var(--solar);
+}
+
+.sim-result {
+  display: none;
+  margin-top: 2rem;
+  animation: fadeIn 0.4s ease;
+}
+.sim-result.show { display: block; }
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.result-card {
+  background: white;
+  border-radius: 14px;
+  padding: 1.5rem 1rem;
+  text-align: center;
+  border: 1px solid #F0EDE6;
+}
+.result-card.highlight {
+  background: #E8920A;
+  border-color: #E8920A;
+}
+.result-card.highlight .result-num,
+.result-card.highlight .result-desc { color: white; }
+.result-num {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #E8920A;
+  margin-bottom: 4px;
+}
+.result-desc { font-size: 0.78rem; color: #5C5750; }
+.result-cta {
+  width: 100%;
+  padding: 14px;
+  background: #25D366;
+  color: white;
+  border: none;
+  border-radius: 50px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  margin-bottom: 12px;
+}
+.result-note {
+  font-size: 0.75rem;
+  color: #9A9385;
+  text-align: center;
+  margin: 0;
+}
+
+  width: 100%;
+  padding: 15px;
+  background: var(--solar);
+  color: var(--ink);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.15s, opacity 0.15s;
+}
+.sim-cta:hover { opacity: 0.9; transform: translateY(-1px); }
+
+.sim-result {
+  margin-top: 2rem;
+  display: none;
+  animation: fadeUp 0.4s ease;
+}
+.sim-result.show { display: block; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.result-card {
+  background: var(--white);
+  border-radius: 14px;
+  padding: 1.2rem;
+  border: 1px solid var(--border);
+  text-align: center;
+}
+
+.result-card.highlight {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+.result-icon { font-size: 1.4rem; margin-bottom: 6px; }
+
+.result-num {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--solar);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.result-card.highlight .result-num { color: var(--solar); }
+
+.result-desc {
+  font-size: 0.72rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.result-card.highlight .result-desc { color: rgba(255,255,255,0.6); }
+
+.result-cta {
+  background: var(--green);
+  color: var(--white);
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 12px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.result-cta:hover { opacity: 0.88; }
+
+.result-note {
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-top: 10px;
+}
+
+/* ── COMO FUNCIONA ── */
+.how-section {
+  background: var(--cream);
+  padding: 5rem 2rem;
+}
+
+.steps {
+  max-width: 780px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+  position: relative;
+}
+
+.steps::before {
+  content: '';
+  position: absolute;
+  top: 28px; left: 10%; right: 10%;
+  height: 1px;
+  background: var(--border);
+  z-index: 0;
+}
+
+.step {
+  text-align: center;
+  position: relative; z-index: 1;
+}
+
+.step-num {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: var(--white);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 1rem;
+  font-family: 'Playfair Display', serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--solar);
+}
+
+.step h3 {
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: var(--ink);
+}
+
+.step p {
+  font-size: 0.78rem;
+  color: var(--muted);
+  line-height: 1.5;
+  font-weight: 300;
+}
+
+/* ── SOCIAL PROOF ── */
+.proof-section {
+  background: var(--ink);
+  padding: 5rem 2rem;
+}
+
+.proof-section .section-title { color: var(--white); }
+.proof-section .section-sub { color: rgba(255,255,255,0.5); }
+
+.testimonials {
+  max-width: 860px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.2rem;
+}
+
+.testimonial {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+  padding: 1.5rem;
+}
+
+.t-stars { color: var(--solar); font-size: 0.8rem; margin-bottom: 0.8rem; letter-spacing: 2px; }
+
+.t-text {
+  font-size: 0.85rem;
+  line-height: 1.65;
+  color: rgba(255,255,255,0.75);
+  font-weight: 300;
+  margin-bottom: 1rem;
+  font-style: italic;
+}
+
+.t-author { font-size: 0.78rem; color: rgba(255,255,255,0.4); }
+.t-author strong { color: rgba(255,255,255,0.8); font-weight: 500; font-style: normal; display: block; }
+.t-savings { color: var(--solar); font-weight: 500; font-size: 0.78rem; display: block; margin-top: 2px; }
+
+/* ── FAQ ── */
+.faq-section {
+  background: var(--white);
+  padding: 5rem 2rem;
+}
+
+.faq-list {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.faq-item {
+  border-bottom: 1px solid var(--border);
+}
+
+.faq-q {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 1.2rem 0;
+  text-align: left;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+}
+
+.faq-q:hover { color: var(--solar); }
+
+.faq-icon {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--warm);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  font-size: 14px;
+  transition: background 0.15s, transform 0.2s;
+  color: var(--solar);
+}
+
+.faq-item.open .faq-icon { background: var(--solar); color: var(--ink); transform: rotate(45deg); }
+
+.faq-a {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease, padding 0.2s;
+  font-size: 0.88rem;
+  line-height: 1.7;
+  color: var(--muted);
+  font-weight: 300;
+}
+
+.faq-item.open .faq-a { max-height: 300px; padding-bottom: 1.2rem; }
+
+/* ── FINAL CTA ── */
+.final-cta {
+  background: var(--solar);
+  padding: 5rem 2rem;
+  text-align: center;
+}
+
+.final-cta h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  font-weight: 900;
+  color: var(--ink);
+  margin-bottom: 1rem;
+  line-height: 1.15;
+}
+
+.final-cta p {
+  font-size: 1rem;
+  color: rgba(0,0,0,0.6);
+  font-weight: 300;
+  max-width: 440px;
+  margin: 0 auto 2rem;
+  line-height: 1.6;
+}
+
+.btn-dark {
+  background: var(--ink);
+  color: var(--white);
+  font-size: 0.95rem;
+  font-weight: 500;
+  font-family: 'DM Sans', sans-serif;
+  padding: 15px 36px;
+  border-radius: 50px;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px;
+  transition: opacity 0.15s;
+}
+.btn-dark:hover { opacity: 0.8; }
+
+/* ── FOOTER ── */
+footer {
+  background: var(--ink);
+  padding: 2rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.3);
+}
+footer a { color: rgba(255,255,255,0.5); text-decoration: none; }
+
+/* ── LEAD MODAL ── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100;
+  padding: 1rem;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.2s;
+}
+.modal-overlay.show { opacity: 1; pointer-events: all; }
+
+.modal {
+  background: var(--white);
+  border-radius: 20px;
+  padding: 2.5rem;
+  max-width: 460px;
+  width: 100%;
+  position: relative;
+  transform: translateY(20px);
+  transition: transform 0.2s;
+}
+.modal-overlay.show .modal { transform: translateY(0); }
+
+.modal-close {
+  position: absolute; top: 1rem; right: 1rem;
+  background: none; border: none; cursor: pointer;
+  font-size: 1.2rem; color: var(--muted);
+}
+
+.modal h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.modal p { font-size: 0.85rem; color: var(--muted); margin-bottom: 1.5rem; font-weight: 300; line-height: 1.5; }
+
+.modal-result-summary {
+  background: var(--solar-pale);
+  border-radius: 10px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.85rem;
+  color: var(--ink);
+  line-height: 1.5;
+  display: none;
+}
+.modal-result-summary.show { display: block; }
+.modal-result-summary strong { color: var(--solar); }
+
+.form-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 1rem; }
+.form-field label { font-size: 0.78rem; font-weight: 500; }
+.form-field input {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-family: 'DM Sans', sans-serif;
+}
+.form-field input:focus { outline: none; border-color: var(--solar); }
+
+.form-submit {
+  width: 100%;
+  padding: 14px;
+  background: var(--solar);
+  color: var(--ink);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.form-submit:hover { opacity: 0.9; }
+
+.form-note { font-size: 0.7rem; color: var(--muted); text-align: center; margin-top: 8px; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 640px) {
+  .sim-grid { grid-template-columns: 1fr; }
+  .result-grid { grid-template-columns: 1fr 1fr; }
+  .result-grid .result-card:last-child { grid-column: span 2; }
+  .steps { grid-template-columns: 1fr 1fr; gap: 1.2rem; }
+  .steps::before { display: none; }
+  .testimonials { grid-template-columns: 1fr; }
+  .hero-stats { gap: 1.5rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="sun-glow"></div>
+  <svg class="sun-rings" viewBox="0 0 300 300">
+    <circle cx="150" cy="150" r="120" stroke-width="1" stroke-dasharray="8 6"/>
+    <circle cx="150" cy="150" r="90" stroke-width="1" stroke-dasharray="4 8"/>
+    <circle cx="150" cy="150" r="60" stroke-width="0.5"/>
+  </svg>
+
+  <nav>
+    <div class="logo">IDC <span>Solar</span></div>
+    <div style="display:flex; align-items:center; gap:16px;">
+      <a href="https://idcsolar.com.br" style="display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:500; color:rgba(255,255,255,0.6); text-decoration:none;">
+        ← Voltar ao site
+      </a>
+      <a href="#simulador" class="nav-cta">Simular economia →</a>
+    </div>
+  </nav>
+
+  <div class="hero-content">
+    <div class="eyebrow">Energia solar pagando sua conta de luz</div>
+    <h1>Pare de pagar caro<br>pela <em>mesma energia</em><br>todo mês.</h1>
+    <p class="hero-sub">A energia solar transforma um custo fixo em investimento — que se paga em 2 a 4 anos e gera economia por décadas.</p>
+
+    <div class="hero-stats">
+      <div class="stat">
+        <span class="stat-num">–85%</span>
+        <span class="stat-label">na conta de luz</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num">2–4</span>
+        <span class="stat-label">anos de retorno</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num">25+</span>
+        <span class="stat-label">anos gerando energia</span>
+      </div>
+    </div>
+
+    <div class="hero-btns">
+      <a href="#simulador" class="btn-primary">
+        Calcular minha economia
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+      </a>
+      <a href="#como-funciona" class="btn-ghost">Como funciona</a>
+    </div>
+  </div>
+
+  <div class="hero-scroll">
+    <span>Rolar</span>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+  </div>
+</section>
+
+<!-- SIMULATOR -->
+<section class="simulator-section" id="simulador">
+  <div class="section-label">Simulador gratuito</div>
+  <h2 class="section-title">Quanto seria a economia?</h2>
+  <p class="section-sub">Preencha os campos abaixo e veja em segundos o potencial de economia com energia solar.</p>
+
+  <div class="simulator">
+    <div class="sim-grid">
+      <div class="sim-field">
+        <label>Valor médio da conta de luz</label>
+        <input type="text" id="conta" placeholder="R$ 0,00" maxlength="12"/>
+      </div>
+      <div class="sim-field">
+        <label>Tipo de instalação</label>
+        <select id="tipo">
+          <option value="res">Residencial</option>
+          <option value="com">Comércio / Empresa</option>
+          <option value="cond">Condomínio</option>
+        </select>
+      </div>
+      <div class="sim-field">
+        <label>Cidade / Região</label>
+        <input type="text" id="cidade" placeholder="Ex: São Paulo, Jundiaí..."/>
+      </div>
+      <div class="sim-field">
+        <label>Telhado próprio?</label>
+        <select id="telhado">
+          <option value="sim">Sim, tenho telhado</option>
+          <option value="nao">Não / Imóvel alugado</option>
+          <option value="cond2">Condomínio / Área comum</option>
+        </select>
+      </div>
+    </div>
+
+    <button class="sim-cta" onclick="calcular()">
+      ☀️ Calcular minha economia agora
+    </button>
+
+    <div class="sim-result" id="resultado">
+      <div class="result-grid">
+        <div class="result-card">
+          <div class="result-num" id="res-mensal">—</div>
+          <div class="result-desc">economia por mês</div>
+        </div>
+        <div class="result-card">
+          <div class="result-num" id="res-anual">—</div>
+          <div class="result-desc">economia por ano</div>
+        </div>
+        <div class="result-card highlight">
+          <div class="result-num" id="res-25anos">—</div>
+          <div class="result-desc">economia em 25 anos</div>
+        </div>
+      </div>
+      <div style="background:#f0fdf4; border-radius:10px; padding:1rem; margin-bottom:1rem; font-size:0.85rem; color:#085041; line-height:1.6;" id="res-texto"></div>
+      <button class="result-cta" onclick="abrirModal()">
+        💬 Quero um diagnóstico gratuito completo
+      </button>
+      <p class="result-note">Simulação estimada. Diagnóstico gratuito e sem compromisso com dados reais da sua conta.</p>
+    </div>
+
+  </div>
+</section>
+
+<!-- COMO FUNCIONA -->
+<section class="how-section" id="como-funciona">
+  <div class="section-label">Processo simples</div>
+  <h2 class="section-title">Da conversa à energia solar</h2>
+  <p class="section-sub">4 etapas, sem burocracia, sem surpresas.</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <h3>Diagnóstico gratuito</h3>
+      <p>Nós analisamos a conta de luz e apresentamos a simulação personalizada de economia.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <h3>Proposta e aprovação</h3>
+      <p>Você recebe uma proposta clara com todos os custos, retorno e prazo de instalação.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <h3>Instalação</h3>
+      <p>Cuidamos de tudo: projeto, equipamentos, instalação e aprovação junto à concessionária.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <h3>Economia na conta</h3>
+      <p>Em até 90 dias sua conta já chega zerada — e fica assim por 25 anos.</p>
+    </div>
+  </div>
+</section>
+
+<!-- SOCIAL PROOF -->
+<!-- FAQ -->
+<section class="faq-section">
+  <div class="section-label">Dúvidas frequentes</div>
+  <h2 class="section-title">Perguntas comuns</h2>
+  <p class="section-sub">As dúvidas mais comuns antes de instalar um sistema solar.</p>
+
+  <div class="faq-list" id="faq">
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="final-cta">
+  <h2>Pronto para parar<br>de pagar caro?</h2>
+  <p>Diagnóstico gratuito, sem compromisso. Atendemos todo o Estado de São Paulo — presencial ou online.</p>
+  <button class="btn-dark" onclick="abrirModal()">
+    Agendar diagnóstico gratuito
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+  </button>
+</section>
+
+<footer>
+  <p>IDC Solar · Estado de São Paulo · <a href="tel:+55">[Telefone]</a> · <a href="mailto:">[Email]</a></p>
+  <p style="margin-top:6px;">© 2025 · Todos os direitos reservados</p>
+</footer>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <button class="modal-close" onclick="fecharModal()">✕</button>
+
+    <!-- STEP 1: formulário -->
+    <div id="modal-step1">
+      <h3>Diagnóstico gratuito ☀️</h3>
+      <p>Deixe o contato e a equipe IDC Solar entrará em breve com a simulação completa — sem custo, sem compromisso.</p>
+
+      <div class="modal-result-summary" id="modal-summary"></div>
+
+      <div class="form-field">
+        <label>Seu nome *</label>
+        <input type="text" id="f-nome" placeholder="Seu nome"/>
+      </div>
+      <div class="form-field">
+        <label>WhatsApp *</label>
+        <input type="tel" id="f-fone" placeholder="(00) 00000-0000" maxlength="15"
+oninput="
+  var v = this.value.replace(/\D/g,'').substring(0,11);
+  if(v.length > 10) v = v.replace(/^(\d{2})(\d{5})(\d{4})/,'($1) $2-$3');
+  else if(v.length > 6) v = v.replace(/^(\d{2})(\d{4})(\d{0,4})/,'($1) $2-$3');
+  else if(v.length > 2) v = v.replace(/^(\d{2})(\d{0,5})/,'($1) $2');
+  else if(v.length > 0) v = v.replace(/^(\d*)/,'($1');
+  this.value = v;
+  this.style.borderColor = v.length >= 14 ? '#22c55e' : '';
+"/>
+      </div>
+      <div class="form-field">
+        <label>Cidade</label>
+        <input type="text" id="f-cidade2" placeholder="Onde você está?"/>
+      </div>
+
+      <button class="form-submit" onclick="enviarForm()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.07 1.18 2 2 0 012 .07h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 14.92z"/></svg>
+        Quero meu diagnóstico gratuito
+      </button>
+      <p class="form-note">🔒 Os dados ficam apenas com a IDC Solar. Sem spam.</p>
+    </div>
+
+    <!-- STEP 2: confirmação -->
+    <div id="modal-step2" style="display:none;text-align:center;">
+      <div style="font-size:2.5rem;margin-bottom:1rem;">✅</div>
+      <h3 style="margin-bottom:0.5rem;">Recebemos seu contato!</h3>
+      <p style="margin-bottom:1.5rem;">Em breve a equipe IDC Solar entrará em contato pelo WhatsApp informado.</p>
+      <button class="form-submit" onclick="fecharModal()" style="max-width:200px;margin:0 auto;">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- PAINEL DE LEADS (acesso via ?admin=1 na URL) -->
+<div id="admin-panel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:200;overflow-y:auto;padding:2rem;">
+  <div style="max-width:900px;margin:0 auto;background:#fff;border-radius:16px;padding:2rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
+      <div>
+        <h2 style="font-family:'Playfair Display',serif;font-size:1.4rem;">Leads Captados — IDC Solar</h2>
+        <p style="font-size:0.8rem;color:#7A756A;margin-top:2px;" id="leads-count">Carregando...</p>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button onclick="exportarExcel()" style="background:#1A7A58;color:#fff;border:none;padding:9px 18px;border-radius:8px;font-size:0.82rem;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;">⬇ Exportar Excel</button>
+        <button onclick="document.getElementById('admin-panel').style.display='none'" style="background:#0F0E0C;color:#fff;border:none;padding:9px 18px;border-radius:8px;font-size:0.82rem;cursor:pointer;font-family:'DM Sans',sans-serif;">Fechar</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto;">
+      <table id="leads-table" style="width:100%;border-collapse:collapse;font-size:0.82rem;">
+        <thead>
+          <tr style="background:#F9F6EF;text-align:left;">
+            <th style="padding:10px 12px;border-bottom:1px solid #E8E4DC;font-weight:600;">#</th>
+            <th style="padding:10px 12px;border-bottom:1px solid #E8E4DC;font-weight:600;">Nome</th>
+            <th style="padding:10px 12px;border-bottom:1px solid #E8E4DC;font-weight:600;">WhatsApp</th>
+            <th style="padding:10px 12px;border-bottom:1px solid #E8E4DC;font-weight:600;">Cidade</th>
+            <th style="padding:10px 12px;border-bottom:1px solid #E8E4DC;font-weight:600;">Tipo</th>
+            <th style="padding:10px 12px;border-bottom:1px solid #E8E4DC;font-weight:600;">Conta (R$)</th>
+            <th style="padding:10px 12px;border-bottom:1px solid #E8E4DC;font-weight:600;">Econ./mês</th>
+            <th style="padding:10px 12px;border-bottom:1px solid #E8E4DC;font-weight:600;">Data</th>
+            <th style="padding:10px 12px;border-bottom:1px solid #E8E4DC;font-weight:600;">Ação</th>
+          </tr>
+        </thead>
+        <tbody id="leads-tbody"></tbody>
+      </table>
+      <p id="leads-empty" style="text-align:center;padding:2rem;color:#7A756A;display:none;">Nenhum lead cadastrado ainda.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── LEADS STORAGE ──
+function getLeads() {
+  try { return JSON.parse(localStorage.getItem('idc_leads') || '[]'); } catch { return []; }
+}
+function saveLeads(leads) {
+  localStorage.setItem('idc_leads', JSON.stringify(leads));
+}
+function addLead(lead) {
+  const leads = getLeads();
+  leads.unshift(lead);
+  saveLeads(leads);
+}
+
+// ── ADMIN PANEL ──
+if (window.location.search.includes('admin=1')) {
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('admin-panel').style.display = 'block';
+    renderLeads();
+  });
+}
+
+function renderLeads() {
+  const leads = getLeads();
+  const tbody = document.getElementById('leads-tbody');
+  const empty = document.getElementById('leads-empty');
+  const count = document.getElementById('leads-count');
+  tbody.innerHTML = '';
+  count.textContent = leads.length + ' lead(s) registrado(s)';
+  if (!leads.length) { empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  const tipoLabel = { res: 'Residencial', com: 'Comércio', cond: 'Condomínio' };
+  leads.forEach((l, i) => {
+    const tr = document.createElement('tr');
+    tr.style.borderBottom = '1px solid #F0EDE7';
+    tr.innerHTML = `
+      <td style="padding:10px 12px;color:#7A756A;">${leads.length - i}</td>
+      <td style="padding:10px 12px;font-weight:500;">${l.nome}</td>
+      <td style="padding:10px 12px;">
+        <a href="https://wa.me/55${l.fone.replace(/\D/g,'')}" target="_blank" style="color:#1A7A58;text-decoration:none;">${l.fone}</a>
+      </td>
+      <td style="padding:10px 12px;">${l.cidade || '—'}</td>
+      <td style="padding:10px 12px;">${tipoLabel[l.tipo] || l.tipo || '—'}</td>
+      <td style="padding:10px 12px;">${l.conta ? 'R$ '+Number(l.conta).toLocaleString('pt-BR') : '—'}</td>
+      <td style="padding:10px 12px;color:#1A7A58;font-weight:500;">${l.economia ? 'R$ '+Math.round(l.economia).toLocaleString('pt-BR') : '—'}</td>
+      <td style="padding:10px 12px;color:#7A756A;">${l.data}</td>
+      <td style="padding:10px 12px;">
+        <button onclick="abrirWhatsApp('${l.nome}','${l.fone}','${l.cidade||''}','${l.tipo||''}','${l.conta||''}','${l.economia||''}')"
+          style="background:#E8930A;color:#0F0E0C;border:none;padding:5px 12px;border-radius:6px;font-size:0.75rem;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;">
+          WhatsApp
+        </button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function abrirWhatsApp(nome, fone, cidade, tipo, conta, economia) {
+  const tipoLabel = { res: 'Residencial', com: 'Comércio', cond: 'Condomínio' };
+  let msg = `Olá, *${nome}*! 😊\n\nSou da equipe IDC Solar. Recebi seu contato aqui pelo site e vim dar um retorno!\n\n`;
+  if (economia) msg += `Vi que você pode economizar em torno de *R$ ${Math.round(economia).toLocaleString('pt-BR')}/mês* com energia solar.\n\n`;
+  msg += `Posso fazer uma simulação personalizada gratuita para você. Tem um minutinho para conversar?`;
+  window.open(`https://wa.me/55${fone.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+function exportarExcel() {
+  const leads = getLeads();
+  if (!leads.length) { alert('Nenhum lead para exportar.'); return; }
+  const tipoLabel = { res: 'Residencial', com: 'Comércio', cond: 'Condomínio' };
+  const headers = ['#','Nome','WhatsApp','Cidade','Tipo de Cliente','Conta de Luz (R$)','Economia Estimada/mês (R$)','Data de Cadastro'];
+  const rows = leads.map((l, i) => [
+    leads.length - i,
+    l.nome,
+    l.fone,
+    l.cidade || '',
+    tipoLabel[l.tipo] || l.tipo || '',
+    l.conta || '',
+    l.economia ? Math.round(l.economia) : '',
+    l.data
+  ]);
+
+  // Gera CSV com BOM para Excel reconhecer UTF-8
+  let csv = '\uFEFF' + headers.join(';') + '\n';
+  rows.forEach(r => { csv += r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(';') + '\n'; });
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const hoje = new Date().toLocaleDateString('pt-BR').replace(/\//g,'-');
+  a.download = `leads_idc_solar_${hoje}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── FAQ DATA ──
+const faqs = [
+  { q: "Quanto tempo leva para o sistema se pagar?", a: "Em média entre 2 e 4 anos, dependendo do valor da sua conta de luz e do tamanho do sistema. Depois do payback, você tem mais de 20 anos de geração praticamente sem custo." },
+  { q: "O sistema funciona em dias nublados?", a: "Sim! Os painéis captam luz difusa — não precisam de sol forte para gerar energia. A geração cai em dias muito fechados, mas não para. No Brasil, com boa irradiação na maior parte do ano, isso raramente é um problema." },
+  { q: "Preciso de bateria?", a: "Não necessariamente. O sistema mais comum no Brasil é conectado à rede elétrica (on-grid). Você gera energia, usa o que precisa e o excedente vai para a rede como crédito — que você usa à noite ou em dias nublados." },
+  { q: "E se meu imóvel for alugado?", a: "Existem alternativas! Uma delas é negociar com o proprietário (a instalação valoriza o imóvel). Outra é o sistema de energia por assinatura, onde é possível receber desconto na conta sem instalar nada. A IDC Solar avalia a melhor opção para cada caso." },
+  { q: "Como é a manutenção depois da instalação?", a: "Mínima. O principal é a limpeza dos painéis, de 1 a 2 vezes por ano — que pode ser feita com água e uma escova macia. Os equipamentos têm garantia de 10 a 25 anos conforme o fabricante." },
+  { q: "Quanto fica minha conta de luz depois?", a: "Na maioria dos casos, a conta cai para a taxa mínima de disponibilidade da concessionária — entre R$ 30 e R$ 60 por mês. É o valor que você paga simplesmente por estar conectado à rede, independente de quanto gera." },
+];
+
+function renderFAQ() {
+  const el = document.getElementById('faq');
+  faqs.forEach((f, i) => {
+    el.innerHTML += `
+      <div class="faq-item" id="faq${i}">
+        <button class="faq-q" onclick="toggleFAQ(${i})">
+          ${f.q}
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-a">${f.a}</div>
+      </div>`;
+  });
+}
+
+function toggleFAQ(i) {
+  const item = document.getElementById('faq' + i);
+  item.classList.toggle('open');
+}
+
+// ── SIMULATOR ──
+function fmt(n) {
+  return 'R$ ' + Math.round(n).toLocaleString('pt-BR');
+}
+
+let simData = {};
+
+function calcular() {
+  const contaRaw = document.getElementById('conta').value.replace(/\D/g,'');
+  const conta = parseFloat(contaRaw) / 100;
+  if (!conta || conta < 50) { alert('Por favor, informe o valor médio da sua conta de luz (mínimo R$ 50,00).'); return; }
+
+  // ── PARÂMETROS IDC SOLAR ──
+  const tarifaKwh       = 0.90;   // R$/kWh
+  const geracaoKwpMes   = 120;    // kWh/mês por kWp instalado
+  const reducaoConta    = 0.80;   // 80% de redução real
+  const inflacaoEnergia = 0.10;   // 10% ao ano
+  const inflacaoAnual   = 0.04;   // 4% ao ano
+  const vidaUtil        = 25;     // anos
+
+  // ── DIMENSIONAMENTO DO SISTEMA ──
+  const economiaKwh = (conta * reducaoConta) / tarifaKwh; // kWh/mês necessários
+  const potenciaKwp = economiaKwh / geracaoKwpMes;        // kWp necessários
+
+  // ── CUSTO DO SISTEMA ──
+  let custoWp;
+  if (potenciaKwp <= 4)       custoWp = 3.90;
+  else if (potenciaKwp <= 10) custoWp = 3.20;
+  else                        custoWp = 2.50;
+  const investimento = potenciaKwp * 1000 * custoWp;
+
+  // ── ECONOMIA MENSAL E ANUAL (ano 1) ──
+  const economiaMensal = conta * reducaoConta;
+  const economiaAnual  = economiaMensal * 12;
+
+  // ── PAYBACK SIMPLES COM DEGRADAÇÃO E INFLAÇÃO ──
+  // Ano 1: degradação 2%, demais: 0,5%
+  let acumulado = 0;
+  let payback = 0;
+  let economiaAcum25 = 0;
+  for (let ano = 1; ano <= vidaUtil; ano++) {
+    const degradacao = ano === 1 ? 0.98 : Math.pow(0.995, ano - 1) * 0.98;
+    const inflacao   = Math.pow(1 + inflacaoEnergia, ano - 1);
+    const economiaAno = economiaAnual * degradacao * inflacao;
+    acumulado += economiaAno;
+    economiaAcum25 += economiaAno;
+    if (acumulado >= investimento && payback === 0) {
+      // Interpolação para payback mais preciso
+      const anterior = acumulado - economiaAno;
+      const frac = (investimento - anterior) / economiaAno;
+      payback = parseFloat((ano - 1 + frac).toFixed(1));
+    }
+  }
+  if (payback === 0) payback = vidaUtil; // caso extremo
+
+  simData = { conta, economiaMensal, economiaAnual, economiaAcum25, investimento, payback, potenciaKwp };
+
+  document.getElementById('res-mensal').textContent  = fmt(economiaMensal);
+  document.getElementById('res-anual').textContent   = fmt(economiaAnual);
+  document.getElementById('res-25anos').textContent  = fmt(economiaAcum25);
+  document.getElementById('res-texto').innerHTML =
+    `✅ Com uma conta de <strong>${fmt(conta)}/mês</strong>, um sistema de aproximadamente <strong>${potenciaKwp.toFixed(1)} kWp</strong> atende sua necessidade.
+    O investimento estimado é de <strong>${fmt(investimento)}</strong> e o retorno acontece em <strong>${payback} anos</strong>.
+    Nos ${vidaUtil} anos de vida útil, a economia acumulada é de <strong>${fmt(economiaAcum25)}</strong>.
+    O diagnóstico gratuito confirma esses números com os dados reais da sua instalação.`;
+
+  document.getElementById('resultado').classList.add('show');
+  document.getElementById('resultado').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ── MODAL ──
+function abrirModal() {
+  const overlay = document.getElementById('modal');
+  overlay.classList.add('show');
+  document.body.style.overflow = 'hidden';
+  document.getElementById('modal-step1').style.display = 'block';
+  document.getElementById('modal-step2').style.display = 'none';
+
+  const summary = document.getElementById('modal-summary');
+  if (simData.economia) {
+    summary.innerHTML = `Com base na simulação: você economiza <strong>${fmt(simData.economia)}/mês</strong> e recupera o investimento em <strong>${simData.payback} anos</strong>. ☀️`;
+    summary.classList.add('show');
+  }
+
+  const cidadeSim = document.getElementById('cidade').value;
+  if (cidadeSim) document.getElementById('f-cidade2').value = cidadeSim;
+}
+
+function fecharModal() {
+  document.getElementById('modal').classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+function enviarForm() {
+  const nome = document.getElementById('f-nome').value.trim();
+  const fone = document.getElementById('f-fone').value.trim();
+  if (!nome) { alert('Por favor, preencha seu nome.'); return; }
+  if (!fone) { alert('Por favor, preencha seu WhatsApp.'); return; }
+  if (fone.replace(/\D/g,'').length < 11) { alert('Por favor, informe um WhatsApp válido com DDD. Ex: (11) 99999-9999'); return; }
+
+  const cidade = document.getElementById('f-cidade2').value.trim();
+  const tipo = document.getElementById('tipo') ? document.getElementById('tipo').value : '';
+  const agora = new Date();
+  const data = agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+
+  // Salva o lead localmente
+  const lead = {
+    nome, fone, cidade, tipo,
+    conta: simData.conta || '',
+    economia: simData.economia ? Math.round(simData.economia) : '',
+    payback: simData.payback || '',
+    data
+  };
+  addLead(lead);
+
+  // Envia para Google Sheets
+  fetch('https://script.google.com/macros/s/AKfycbxitUHgjqq144jNAVM6qWwbCDmkAnBK6SGBvAT0_EL5HuctoRh0o7ffVw9Y720nV4Ys/exec', {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(lead)
+  }).catch(() => {});
+
+  // Monta mensagem e abre WhatsApp
+  const tipoLabel = { res: 'Residencial', com: 'Comércio', cond: 'Condomínio' }[tipo] || '';
+  let msg = `Olá! Me chamo *${nome}* e tenho interesse em energia solar.`;
+  if (simData.economia) {
+    msg += `\n\nFiz a simulação no site e vi que posso economizar *${fmt(simData.economia)}/mês*.`;
+  }
+  if (cidade) msg += `\n\nCidade: ${cidade}`;
+  if (tipoLabel) msg += `\nTipo: ${tipoLabel}`;
+  msg += `\n\nGostaria de agendar o diagnóstico gratuito!`;
+
+  const numero = '5511945643186';
+  window.open(`https://wa.me/${numero}?text=${encodeURIComponent(msg)}`, '_blank');
+
+  // Mostra confirmação
+  document.getElementById('modal-step1').style.display = 'none';
+  document.getElementById('modal-step2').style.display = 'block';
+}
+
+document.getElementById('modal').addEventListener('click', function(e) {
+  if (e.target === this) fecharModal();
+});
+
+renderFAQ();
+</script>
+<script>
+// Máscara telefone
+function mascararFone(input) {
+  input.addEventListener('input', function() {
+    var v = this.value.replace(/\D/g,'').substring(0,11);
+    if (v.length > 10) v = '('+v.substring(0,2)+') '+v.substring(2,7)+'-'+v.substring(7,11);
+    else if (v.length > 6) v = '('+v.substring(0,2)+') '+v.substring(2,6)+'-'+v.substring(6);
+    else if (v.length > 2) v = '('+v.substring(0,2)+') '+v.substring(2);
+    else if (v.length > 0) v = '('+v;
+    this.value = v;
+    this.style.borderColor = v.replace(/\D/g,'').length === 11 ? '#22c55e' : '';
+  });
+  input.addEventListener('keydown', function(e) {
+    if (this.value.replace(/\D/g,'').length >= 11 && e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' && !e.ctrlKey) {
+      e.preventDefault();
+    }
+  });
+}
+
+// Máscara moeda
+function mascararMoeda(input) {
+  input.addEventListener('input', function() {
+    var v = this.value.replace(/\D/g,'');
+    if (v.length === 0) { this.value = ''; return; }
+    v = (parseInt(v)/100).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+    this.value = 'R$ ' + v;
+    this.style.borderColor = parseInt(this.value.replace(/\D/g,'')) > 0 ? '#22c55e' : '';
+  });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  var fone = document.getElementById('f-fone');
+  var conta = document.getElementById('conta');
+  if (fone) mascararFone(fone);
+  if (conta) mascararMoeda(conta);
+});
+</script>
+</body>
+</html>
