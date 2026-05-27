@@ -501,7 +501,7 @@ async function carregarEquipamentosDB() {
     paineisDB    = await rP.json() || [];
     inversoresDB = await rI.json() || [];
     clientesDB   = await rC.json() || [];
-    if(setups.length) { salvarCondicoesPagamento(); renderSetups(); }
+    if(setups.length) renderSetups();
   } catch(e) { console.warn('Equipamentos não carregados:', e); }
 }
 
@@ -1088,7 +1088,6 @@ function preencherPainel(idx, id) {
   s.potModulo = p.potencia_w||''; s.tipoModulo = p.tipo||'';
   s.eficienciaModulo = p.eficiencia_pct||''; s.garFabricacao = p.garantia_produto_anos||'';
   s.garPerfPct = p.garantia_performance_pct||''; s.garPerformance = p.garantia_geracao_anos||'';
-  salvarCondicoesPagamento();
   renderSetups();
   toast('Painel preenchido: '+p.marca+' '+p.modelo);
 }
@@ -1101,7 +1100,6 @@ function preencherInversor(idx, id) {
   s.tipoInversor = inv.tipo||'Inversor'; s.marcaInversor = inv.marca||'';
   s.modeloInversor = inv.modelo||''; s.garInversor = inv.garantia_anos||'';
   s.vidaInversor = '>20 anos';
-  salvarCondicoesPagamento();
   renderSetups();
   atualizarMicroQtd(idx);
   toast('Inversor preenchido: '+inv.marca+' '+inv.modelo);
@@ -1245,6 +1243,20 @@ function calcPrecoSetup(idx) {
 
   const div = document.getElementById('preco-resumo-'+idx);
   if(!div) return;
+
+  // Preserva valores digitados nas condições de pagamento antes de recriar o HTML
+  const _feEl = document.getElementById('fin-entrada-'+idx);
+  const _fpEl = document.getElementById('fin-parcelas-'+idx);
+  const _ckEl = document.getElementById('cc-kit-'+idx);
+  const _cpEl = document.getElementById('cc-kit-parc-'+idx);
+  const _csEl = document.getElementById('cc-svc-'+idx);
+  const _spEl = document.getElementById('cc-svc-parc-'+idx);
+  if(_feEl && _feEl.value !== '') s._finEntrada  = parseFloat(_feEl.value) || 0;
+  if(_fpEl && _fpEl.value !== '') s._finParcelas = parseInt(_fpEl.value)   || 4;
+  if(_ckEl && _ckEl.value !== '') s._ccKit       = parseFloat(_ckEl.value) || 0;
+  if(_cpEl && _cpEl.value !== '') s._ccKitParc   = parseInt(_cpEl.value)   || 21;
+  if(_csEl && _csEl.value !== '') s._ccSvc       = parseFloat(_csEl.value) || 0;
+  if(_spEl && _spEl.value !== '') s._ccSvcParc   = parseInt(_spEl.value)   || 6;
 
   const b = s._breakdown;
   const impLabel = s.faturamentoDireto
@@ -1485,8 +1497,7 @@ async function gerarPropostaFinal() {
   const calc = window._calc || {};
   const fin  = window._financeiro || {};
 
-  // Garante que as condições de pagamento estão salvas (independente da navegação entre etapas)
-  salvarCondicoesPagamento();
+  // Condições já foram salvas em salvarCondicoesPagamento() ao avançar para etapa 5
   const dadosProposta = {
     setups: setups.map(s => ({...s})),
     calc: {
