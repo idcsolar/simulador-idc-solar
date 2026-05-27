@@ -1237,20 +1237,21 @@ function showSection(id) {
 // ── DASHBOARD ──
 async function carregarDashboard() {
   try {
+    // Sempre recarrega do banco para ter dados frescos
     const props = await api('GET', '/rest/v1/propostas?select=*&order=created_at.desc');
     propostasCache = props || [];
-    const total = propostasCache.length;
-    const abertas = propostasCache.filter(p => p.status === 'Aberta' || p.aberta_em).length;
-    const assinadas = propostasCache.filter(p => p.status === 'Assinada').length;
-    const kwp = propostasCache.reduce((s, p) => s + (p.potencia_kwp || 0), 0);
-    const valor = propostasCache.reduce((s, p) => s + (p.valor_total || 0), 0);
-    const conv = total > 0 ? Math.round((assinadas / total) * 100) : 0;
-    document.getElementById('stat-total').textContent = total;
-    document.getElementById('stat-abertas').textContent = abertas;
+    const total    = propostasCache.length;
+    const abertas  = propostasCache.filter(p => p.status === 'Enviada' || p.status === 'Aberta').length;
+    const assinadas= propostasCache.filter(p => p.status === 'Assinada').length;
+    const kwp      = propostasCache.reduce((s, p) => s + (p.potencia_kwp || 0), 0);
+    const valor    = propostasCache.reduce((s, p) => s + (p.valor_total  || 0), 0);
+    const conv     = total > 0 ? Math.round((assinadas / total) * 100) : 0;
+    document.getElementById('stat-total').textContent     = total;
+    document.getElementById('stat-abertas').textContent   = abertas;
     document.getElementById('stat-assinadas').textContent = assinadas;
-    document.getElementById('stat-kwp').textContent = kwp.toFixed(1) + ' kWp';
-    document.getElementById('stat-valor').textContent = fmtMoeda(valor);
-    document.getElementById('stat-conv').textContent = conv + '%';
+    document.getElementById('stat-kwp').textContent       = kwp.toFixed(1) + ' kWp';
+    document.getElementById('stat-valor').textContent     = fmtMoeda(valor);
+    document.getElementById('stat-conv').textContent      = conv + '%';
     renderTabelaRecentes(propostasCache.slice(0, 5));
   } catch(e) { console.error(e); }
 }
@@ -1273,7 +1274,7 @@ function renderTabelaRecentes(list) {
 // ── PROPOSTAS ──
 async function carregarPropostas() {
   try {
-    const props = await api('GET', '/rest/v1/propostas?select=*&order=numero.desc');
+    const props = await api('GET', '/rest/v1/propostas?select=*&order=created_at.desc');
     propostasCache = props || [];
 
     // Busca acessos agrupados
@@ -1318,10 +1319,11 @@ function renderTabelaPropostas(list) {
       <td>${acessoBadge}</td>
       <td>${fmtData(p.created_at)}</td>
       <td style="display:flex;gap:6px;">
-        <button class="btn btn-outline btn-sm" onclick="verProposta('${p.id}')"><i class="ph ph-eye"></i></button>
-        <button class="btn btn-outline btn-sm" onclick="editarProposta('${p.id}')"><i class="ph ph-pencil"></i></button>
-        <button class="btn btn-outline btn-sm" onclick="gerarLinkProposta('${p.id}','${p.link_unico||''}')"><i class="ph ph-share-network"></i></button>
-        <button class="btn btn-danger btn-sm" onclick="deletarProposta('${p.id}','${(p.cliente_nome||'').replace(/'/g,'')}')"><i class="ph ph-trash"></i></button>
+        <button class="btn btn-outline btn-sm" title="Visualizar" onclick="verProposta('${p.id}')"><i class="ph ph-eye"></i></button>
+        <button class="btn btn-outline btn-sm" title="Editar" onclick="editarProposta('${p.id}')"><i class="ph ph-pencil"></i></button>
+        <button class="btn btn-outline btn-sm" title="Compartilhar" onclick="gerarLinkProposta('${p.id}','${p.link_unico||''}')"><i class="ph ph-share-network"></i></button>
+        <button class="btn btn-outline btn-sm" title="Histórico" onclick="verHistoricoRevisoes('${p.id}')"><i class="ph ph-clock-counter-clockwise"></i></button>
+        <button class="btn btn-danger btn-sm" title="Deletar" onclick="deletarProposta('${p.id}','${(p.cliente_nome||'').replace(/'/g,'')}')"><i class="ph ph-trash"></i></button>
       </td>
     </tr>`;
   }).join('');
@@ -1438,92 +1440,144 @@ function abrirModalProposta() {
 
 async function editarProposta(id) {
   const p = propostasCache.find(x => x.id === id);
-  if (!p) return;
-  editandoPropostaId = id;
-  document.getElementById('modal-proposta-title').textContent = `Editar proposta #${String(p.numero).padStart(3,'0')} · Rev.${p.revisao + 1}`;
-  document.getElementById('btn-salvar-proposta').innerHTML = '<i class="ph ph-floppy-disk"></i> Salvar revisão';
-  document.getElementById('p-nome').value = p.cliente_nome || '';
-  document.getElementById('p-fone').value = p.cliente_fone || '';
-  document.getElementById('p-email').value = p.cliente_email || '';
-  document.getElementById('p-cidade').value = p.cliente_cidade || '';
-  document.getElementById('p-kwp').value = p.potencia_kwp || '';
-  document.getElementById('p-valor').value = p.valor_total ? 'R$ ' + p.valor_total.toFixed(2).replace('.',',') : '';
-  document.getElementById('p-obs').value = p.observacoes || '';
-  document.getElementById('equip-lista').innerHTML = '';
-  adicionarEquipRow();
-  document.getElementById('modal-proposta').classList.add('open');
+  if(!p) return;
+
+  // Abre o gerador com os dados da proposta passados via URL + localStorage
+  localStorage.setItem('idc_editar_proposta', JSON.stringify(p));
+  window.open('https://simulador.idcsolar.com.br/gerador.html?editar=' + id, '_blank');
 }
 
-async function salvarProposta() {
-  const nome = document.getElementById('p-nome').value.trim();
-  const fone = document.getElementById('p-fone').value.trim();
-  const kwp = parseFloat(document.getElementById('p-kwp').value);
-  const valorRaw = document.getElementById('p-valor').value.replace(/\D/g,'');
-  const valor = parseFloat(valorRaw) / 100;
+async function salvarRevisao(id, dadosNovos, motivo) {
+  const pAtual = propostasCache.find(x => x.id === id);
+  if(!pAtual) return;
 
-  if (!nome) { toast('Informe o nome do cliente.'); return; }
-  if (!kwp) { toast('Informe a potência em kWp.'); return; }
-  if (!valor) { toast('Informe o valor total.'); return; }
+  const novaRev = (pAtual.revisao || 0) + 1;
 
-  const linkUnico = 'proposta-' + Date.now();
-
-  const dados = {
-    cliente_nome: nome,
-    cliente_fone: fone,
-    cliente_email: document.getElementById('p-email').value,
-    cliente_cidade: document.getElementById('p-cidade').value,
-    tipo_projeto: document.getElementById('p-tipo-projeto').value,
-    tipo_cliente: document.getElementById('p-tipo-cliente').value,
-    concessionaria: document.getElementById('p-concessionaria').value,
-    potencia_kwp: kwp,
-    valor_total: valor,
-    economia_estimada: parseFloat(document.getElementById('p-economia').value.replace(/\D/g,'')) / 100 || null,
-    payback_anos: parseFloat(document.getElementById('p-payback').value) || null,
-    endereco: document.getElementById('p-endereco').value,
-    observacoes: document.getElementById('p-obs').value,
-    validade: document.getElementById('p-validade').value,
-    status: 'Rascunho'
-  };
-
+  // Salva snapshot da versão anterior em revisoes
   try {
-    if (editandoPropostaId) {
-      const pAtual = propostasCache.find(x => x.id === editandoPropostaId);
-      const novaRev = (pAtual.revisao || 1) + 1;
-      // Salva snapshot da revisão anterior
-      await api('POST', '/rest/v1/revisoes', {
-        proposta_id: editandoPropostaId,
-        numero_revisao: pAtual.revisao,
-        motivo: document.getElementById('p-motivo-rev').value,
-        dados_snapshot: pAtual
-      });
-      // Atualiza proposta
-      await api('PATCH', `/rest/v1/propostas?id=eq.${editandoPropostaId}`, {
-        ...dados, revisao: novaRev, updated_at: new Date().toISOString()
-      });
-      toast('Revisão ' + novaRev + ' salva com sucesso!');
-    } else {
-      await api('POST', '/rest/v1/propostas', { ...dados, revisao: 1, link_unico: linkUnico });
-      toast('Proposta gerada com sucesso!');
-    }
-    fecharModal('modal-proposta');
-    carregarPropostas();
-    carregarDashboard();
-  } catch(e) { toast('Erro: ' + e.message); }
+    await api('POST', '/rest/v1/revisoes', {
+      proposta_id:    id,
+      numero_revisao: pAtual.revisao || 0,
+      motivo:         motivo || 'Revisão ' + novaRev,
+      dados_snapshot: JSON.stringify(pAtual)
+    });
+  } catch(e) { console.warn('Snapshot não salvo:', e); }
+
+  // Atualiza a proposta com nova revisão
+  await api('PATCH', `/rest/v1/propostas?id=eq.${id}`, {
+    ...dadosNovos,
+    revisao:    novaRev,
+    status:     'Enviada',
+    updated_at: new Date().toISOString()
+  });
+
+  toast(`✅ Revisão ${novaRev} salva!`);
+  carregarPropostas();
+  carregarDashboard();
+}
+
+async function verHistoricoRevisoes(id) {
+  const p = propostasCache.find(x => x.id === id);
+  if(!p) return;
+
+  let revisoes = [];
+  try {
+    revisoes = await api('GET', `/rest/v1/revisoes?proposta_id=eq.${id}&order=numero_revisao.desc`);
+  } catch(e) {}
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay open';
+  overlay.style.zIndex = '300';
+  overlay.innerHTML = `
+    <div class="modal" style="max-width:600px;">
+      <div class="modal-header">
+        <h3><i class="ph ph-clock-counter-clockwise"></i> Histórico — ${p.cliente_nome}</h3>
+        <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="margin-bottom:16px;padding:12px;background:var(--orange-light);border-radius:10px;border:1px solid var(--orange);font-size:13px;">
+          <strong>Versão atual:</strong> Rev. ${p.revisao||0} · ${fmtData(p.updated_at||p.created_at)} · Status: ${p.status||'—'}
+        </div>
+        ${revisoes && revisoes.length ? `
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead><tr style="background:var(--bg);">
+            <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);">Revisão</th>
+            <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);">Data</th>
+            <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);">Motivo</th>
+            <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);">Valor</th>
+          </tr></thead>
+          <tbody>
+          ${revisoes.map(r => {
+            let snap = {};
+            try { snap = JSON.parse(r.dados_snapshot||'{}'); } catch(e){}
+            return `<tr>
+              <td style="padding:8px 12px;border-bottom:1px solid var(--bg2);">
+                <span class="badge badge-rev">R${r.numero_revisao}</span>
+              </td>
+              <td style="padding:8px 12px;border-bottom:1px solid var(--bg2);">${fmtData(r.created_at)}</td>
+              <td style="padding:8px 12px;border-bottom:1px solid var(--bg2);">${r.motivo||'—'}</td>
+              <td style="padding:8px 12px;border-bottom:1px solid var(--bg2);">${fmtMoeda(snap.valor_total)}</td>
+            </tr>`;
+          }).join('')}
+          </tbody>
+        </table>` : `<div class="empty-state"><i class="ph ph-clock"></i><p>Nenhuma revisão anterior</p></div>`}
+      </div>
+    </div>`;
+  overlay.addEventListener('click', e => { if(e.target===overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
 }
 
 function verProposta(id) {
   const p = propostasCache.find(x => x.id === id);
-  if (p && p.link_unico) {
-    window.open('https://idcsolar.com.br/proposta/' + p.link_unico, '_blank');
+  if(p && p.link_unico) {
+    window.open('https://idcsolar.com.br/proposta?id=' + p.link_unico, '_blank');
   } else {
-    toast('Publique a proposta primeiro para gerar o link.');
+    toast('Proposta sem link único.');
   }
 }
 
 function gerarLinkProposta(id, link) {
-  if (!link) { toast('Proposta sem link único.'); return; }
-  const url = 'https://idcsolar.com.br/proposta/' + link;
-  navigator.clipboard.writeText(url).then(() => toast('Link copiado: ' + url));
+  const p = propostasCache.find(x => x.id === id);
+  const lnk = link || p?.link_unico;
+  if(!lnk) { toast('Proposta sem link único.'); return; }
+  const url = 'https://idcsolar.com.br/proposta?id=' + lnk;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay open';
+  overlay.style.zIndex = '300';
+  overlay.innerHTML = `
+    <div class="modal" style="max-width:500px;">
+      <div class="modal-header">
+        <h3><i class="ph ph-share-network"></i> Compartilhar proposta</h3>
+        <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="margin-bottom:16px;">
+          <label style="font-size:12px;font-weight:500;color:var(--gray-dark);display:block;margin-bottom:6px;">Link da proposta</label>
+          <div style="display:flex;gap:8px;">
+            <input type="text" value="${url}" readonly id="share-link-input"
+              style="flex:1;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:12px;font-family:monospace;outline:none;background:white;"/>
+            <button onclick="navigator.clipboard.writeText('${url}').then(()=>toast('Copiado!'))" class="btn btn-primary btn-sm">
+              <i class="ph ph-copy"></i> Copiar
+            </button>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <a href="https://wa.me/${p?.cliente_fone ? '55'+p.cliente_fone.replace(/\\D/g,'') : ''}?text=${encodeURIComponent('Olá '+( p?.cliente_nome||'')+'! Segue o link da sua proposta IDC Solar 🌞\n\n'+url)}"
+            target="_blank" class="btn btn-success">
+            <i class="ph ph-whatsapp-logo"></i> Enviar por WhatsApp
+          </a>
+          <button onclick="window.open('${url}','_blank')" class="btn btn-outline">
+            <i class="ph ph-eye"></i> Visualizar
+          </button>
+          <button onclick="verHistoricoRevisoes('${id}')" class="btn btn-outline">
+            <i class="ph ph-clock-counter-clockwise"></i> Histórico
+          </button>
+        </div>
+      </div>
+    </div>`;
+  overlay.addEventListener('click', e => { if(e.target===overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
 }
 
 // ── EQUIPAMENTOS NA PROPOSTA ──

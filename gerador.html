@@ -637,11 +637,34 @@ function calcularDimensionamento(consumos, media) {
   });
   const geracaoMedia = geracaoMes.reduce((a,b)=>a+b,0)/12;
 
+  // Percentual do Fio B cobrado (Lei 14.300/2022 — GD II pós jan/2023)
+  const anoAtual = new Date().getFullYear();
+  const pctFioB = anoAtual <= 2023 ? 0.15 :
+                  anoAtual === 2024 ? 0.30 :
+                  anoAtual === 2025 ? 0.45 :
+                  anoAtual === 2026 ? 0.60 :
+                  anoAtual === 2027 ? 0.75 :
+                  anoAtual === 2028 ? 0.90 : 1.00;
+
   const contaAtual = media * tarifa;
-  const energiaCompensada = Math.min(geracaoMedia * fs, media - minKwh);
-  const contaDepois = Math.max(minKwh * fiob, (media - energiaCompensada) * tarifa * (1-perdas*0.3));
+
+  // Energia instantânea (consumida diretamente, sem passar pela rede)
+  const energiaInstantanea = Math.min(geracaoMedia * fs, media);
+  // Energia compensada via créditos na rede
+  const energiaCompensada  = Math.min(
+    Math.max(0, geracaoMedia - energiaInstantanea),
+    Math.max(0, media - energiaInstantanea - minKwh)
+  );
+  const consumoResidual = Math.max(0, media - energiaInstantanea - energiaCompensada);
+
+  // Conta com solar: mínimo + Fio B escalonado + residual
+  const custoMinimo   = minKwh * fiob;
+  const custoFioB     = energiaCompensada * fiob * pctFioB;
+  const custoResidual = consumoResidual * tarifa;
+  const contaDepois   = Math.max(custoMinimo, custoMinimo + custoFioB + custoResidual);
+
   const economia = contaAtual - contaDepois;
-  const reducao = economia / contaAtual * 100;
+  const reducao  = economia / contaAtual * 100;
 
   document.getElementById('dimensionamento-result').style.display='block';
 
@@ -1496,6 +1519,52 @@ async function gerarPropostaFinal() {
   };
 
   try {
+    // Modo edição: salva revisão + atualiza proposta
+    if(window._editandoPropostaId) {
+      const revAtual = window._editandoRevisaoAtual || 0;
+      const novaRev  = revAtual + 1;
+
+      // Salva snapshot da revisão atual em revisoes
+      try {
+        await fetch(SUPA_URL + '/rest/v1/revisoes', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY},
+          body: JSON.stringify({
+            proposta_id:    window._editandoPropostaId,
+            numero_revisao: revAtual,
+            motivo:         'Rev. ' + novaRev + ' em ' + new Date().toLocaleDateString('pt-BR'),
+            dados_snapshot: JSON.stringify(dadosProposta)
+          })
+        });
+      } catch(e) { console.warn('Snapshot não salvo:', e); }
+
+      // Atualiza proposta existente
+      const rPatch = await fetch(SUPA_URL + '/rest/v1/propostas?id=eq.' + window._editandoPropostaId, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type':'application/json',
+          'apikey':SUPA_KEY,
+          'Authorization':'Bearer '+SUPA_KEY,
+          'Prefer':'return=representation'
+        },
+        body: JSON.stringify({
+          ...proposta,
+          id: undefined,
+          revisao:    novaRev,
+          updated_at: new Date().toISOString(),
+          status:     'Enviada'
+        })
+      });
+      const dadosPatch = await rPatch.json();
+      if(!rPatch.ok) throw new Error(JSON.stringify(dadosPatch));
+      toast('✅ Revisão ' + novaRev + ' salva!');
+      window._editandoPropostaId = null;
+      mostrarModalSucesso(proposta.prop_numero + ' Rev.' + novaRev, linkUnico, nome, fone);
+      if(btn){ btn.disabled=false; btn.innerHTML='<i class="ph ph-file-text"></i> Gerar proposta para o cliente'; }
+      return;
+    }
+
+    // Nova proposta
     const r = await fetch(SUPA_URL + '/rest/v1/propostas', {
       method: 'POST',
       headers: {
@@ -1680,7 +1749,82 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
   adicionarSetup();
   carregarEquipamentosDB();
+
+  // Verifica modo de edição
+  const params = new URLSearchParams(window.location.search);
+  const editarId = params.get('editar');
+  if(editarId) {
+    const dadosSalvos = localStorage.getItem('idc_editar_proposta');
+    if(dadosSalvos) {
+      try {
+        const p = JSON.parse(dadosSalvos);
+        localStorage.removeItem('idc_editar_proposta');
+        setTimeout(() => carregarPropostaParaEdicao(p, editarId), 500);
+      } catch(e) { console.warn('Erro ao carregar edição:', e); }
+    }
+  }
 });
+
+function carregarPropostaParaEdicao(p, editarId) {
+  window._editandoPropostaId = editarId;
+  window._editandoRevisaoAtual = p.revisao || 0;
+
+  const set = (id, val) => { const el=document.getElementById(id); if(el && val!=null) el.value=val; };
+  set('cli-nome',    p.cliente_nome);
+  set('cli-fone',    p.cliente_fone);
+  set('cli-email',   p.cliente_email);
+  set('prop-numero', p.prop_numero || p.numero);
+  set('prop-revisao',(p.revisao||0) + 1);
+
+  if(p.cliente_cidade) {
+    const cidEl = document.getElementById('proj-cidade');
+    if(cidEl) {
+      cidEl.value = p.cliente_cidade;
+      if(HSP_DATA.length) {
+        const termo = p.cliente_cidade.split('/')[0].trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+        const match = HSP_DATA.find(c =>
+          c.n.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'') === termo
+        );
+        if(match) selecionarCidade(match);
+      }
+    }
+  }
+
+  let dados = {};
+  try { dados = typeof p.dados_proposta === 'string' ? JSON.parse(p.dados_proposta) : (p.dados_proposta||{}); } catch(e){}
+
+  if(dados.setups && dados.setups.length) { setups = dados.setups; renderSetups(); }
+
+  if(dados.params) {
+    const sp = (id, val) => { const el=document.getElementById(id); if(el && val!=null) el.value=val; };
+    sp('param-tarifa',   dados.params.tarifa);
+    sp('param-icms',     dados.params.icms);
+    sp('param-perdas',   dados.params.perdas);
+    sp('param-fs',       dados.params.fs);
+    sp('fin-inf-energia',dados.params.infE);
+    sp('fin-inf-anual',  dados.params.infA);
+    sp('fin-deg1',       dados.params.deg1);
+    sp('fin-deg',        dados.params.degN);
+    sp('fin-manut',      dados.params.manut);
+    sp('fin-vida',       dados.params.vida);
+  }
+
+  if(dados.calc && dados.calc.consumoMes) {
+    dados.calc.consumoMes.forEach((v,i) => {
+      const el = document.getElementById('c'+i); if(el) el.value = v||'';
+    });
+  }
+
+  const banner = document.createElement('div');
+  banner.style.cssText = 'background:var(--orange-light);border:1px solid var(--orange);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--orange-dark);display:flex;align-items:center;gap:8px;';
+  banner.innerHTML = '<i class="ph ph-pencil-line" style="font-size:16px;"></i> <strong>Modo de edi\u00e7\u00e3o</strong> — Editando proposta de <strong>' + p.cliente_nome + '</strong>. Ao gerar, ser\u00e1 a revis\u00e3o ' + ((p.revisao||0)+1) + '.';
+  const cont = document.querySelector('.container');
+  if(cont) cont.insertBefore(banner, cont.firstChild);
+
+  calcularTudo();
+  goStep(1);
+  toast('Proposta carregada para edi\u00e7\u00e3o!');
+}
 </script>
 </body>
 </html>

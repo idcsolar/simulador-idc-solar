@@ -1580,14 +1580,17 @@ function mostrarErro(msg) {
 // ── VALIDADE DA PROPOSTA ──
 function verificarValidade() {
   const P = PROPOSTA;
-  const criacao = P.created_at ? new Date(P.created_at) : null;
-  if(!criacao) return; // sem data de criação não bloqueia (preview)
+  if(!P.created_at) return; // sem data = preview, não bloqueia
 
-  const diasValidade = P.validade_dias || CONFIG.validade_dias;
+  const criacao = new Date(P.created_at);
+  if(isNaN(criacao.getTime())) return; // data inválida = não bloqueia
+
+  const diasValidade = P.validade_dias || CONFIG.validade_dias || 30;
   const expiracao = new Date(criacao);
   expiracao.setDate(expiracao.getDate() + diasValidade);
 
-  if(new Date() > expiracao) {
+  // Só bloqueia se status não for Assinada
+  if(new Date() > expiracao && P.status !== 'Assinada') {
     mostrarPropostaExpirada(expiracao);
   }
 }
