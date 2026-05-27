@@ -1299,9 +1299,12 @@ function novaPropostaCompleto() {
   const seq = String(Math.floor(Math.random()*900)+100);
   document.getElementById('prop-numero').value = `IDC.RG.${seq}.${ano}.R00`;
   document.getElementById('prop-revisao').value = '0';
-  document.getElementById('hsp-badge').innerHTML = `<i class="ph ph-sun"></i> Selecione uma cidade`;
-  document.getElementById('hsp-meses-wrap').style.display = 'none';
-  document.getElementById('dimensionamento-result').style.display = 'none';
+  const _hspBadge = document.getElementById('hsp-badge');
+  if(_hspBadge) _hspBadge.innerHTML = '<i class="ph ph-sun"></i> Selecione uma cidade';
+  const _hspWrap = document.getElementById('hsp-meses-wrap');
+  if(_hspWrap) _hspWrap.style.display = 'none';
+  const _dimRes = document.getElementById('dimensionamento-result');
+  if(_dimRes) _dimRes.style.display = 'none';
 
   goStep(1);
   toast('Formulário limpo. Nova proposta!');
@@ -1330,10 +1333,17 @@ function toast(msg) {
 // ── INICIALIZAÇÃO ──
 document.addEventListener('DOMContentLoaded', ()=>{
   const hoje = new Date();
-  document.getElementById('prop-data').value = hoje.toISOString().split('T')[0];
   const ano = String(hoje.getFullYear()).slice(2);
   const seq = String(Math.floor(Math.random()*900)+100);
-  document.getElementById('prop-numero').value = `IDC.RG.${seq}.${ano}.R00`;
+
+  const elData    = document.getElementById('prop-data');
+  const elNumero  = document.getElementById('prop-numero');
+  const elRevisao = document.getElementById('prop-revisao');
+
+  if(elData)    elData.value    = hoje.toISOString().split('T')[0];
+  if(elNumero)  elNumero.value  = `IDC.RG.${seq}.${ano}.R00`;
+  if(elRevisao) elRevisao.value = '0';
+
   adicionarSetup();
   carregarEquipamentosDB();
 });
