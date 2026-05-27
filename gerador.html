@@ -775,31 +775,92 @@ function renderChartFluxo(fluxos, fcl, payback) {
   if(chartFluxo) chartFluxo.destroy();
   const ctx = document.getElementById('chart-fluxo')?.getContext('2d');
   if(!ctx) return;
-  const anos = fluxos.map((_,i)=>i);
-  // Destaca o ano de payback
-  const bgColors = fluxos.map((v,i) => {
-    if(i===0) return 'rgba(239,68,68,.7)';
-    return v > 0 ? 'rgba(232,146,10,.7)' : 'rgba(239,68,68,.5)';
+
+  const anos = fluxos.map((_,i) => 'Ano ' + i);
+
+  // Barras: vermelho onde FCL acumulado ainda negativo, laranja quando positivo
+  const bgColors = fluxos.map((v,i) =>
+    i === 0 ? 'rgba(239,68,68,.85)' :
+    fcl[i] < 0 ? 'rgba(239,68,68,.6)' :
+    'rgba(232,146,10,.85)'
+  );
+
+  // Ponto de cruzamento — destaca o ano do payback na linha verde
+  const pointRadii = fcl.map((v,i) => {
+    if(i > 0 && fcl[i] >= 0 && fcl[i-1] < 0) return 8;
+    return 2;
   });
+  const pointColors = fcl.map((v,i) => {
+    if(i > 0 && fcl[i] >= 0 && fcl[i-1] < 0) return '#4ade80';
+    return 'rgba(34,197,94,.6)';
+  });
+
   chartFluxo = new Chart(ctx, {
-    type:'bar',
-    data:{
+    data: {
       labels: anos,
-      datasets:[
-        {label:'Fluxo de Caixa',data:fluxos.map(v=>Math.round(v)),backgroundColor:bgColors,type:'bar',borderRadius:3},
-        {label:'FCL Acumulado',data:fcl.map(v=>Math.round(v)),type:'line',borderColor:'rgba(34,197,94,1)',borderWidth:2,pointRadius:2,fill:false,yAxisID:'y2',backgroundColor:'transparent'}
+      datasets: [
+        {
+          type: 'bar',
+          label: 'Economia anual*',
+          data: fluxos.map(v => Math.round(v)),
+          backgroundColor: bgColors,
+          borderRadius: 3,
+          yAxisID: 'y',
+          order: 2
+        },
+        {
+          type: 'line',
+          label: 'FCL Acumulado*',
+          data: fcl.map(v => Math.round(v)),
+          borderColor: 'rgba(34,197,94,1)',
+          backgroundColor: 'rgba(34,197,94,.08)',
+          borderWidth: 2.5,
+          pointRadius: pointRadii,
+          pointBackgroundColor: pointColors,
+          pointBorderColor: pointColors,
+          fill: true,
+          tension: 0.3,
+          yAxisID: 'y2',
+          order: 1
+        }
       ]
     },
-    options:{
-      responsive:true,
-      plugins:{
-        legend:{labels:{color:'rgba(255,255,255,.7)',font:{size:11}}},
-        annotation:{annotations:{paybackLine:payback?{type:'line',xMin:payback,xMax:payback,borderColor:'rgba(255,255,255,.5)',borderWidth:1,borderDash:[4,4]}:{}}}
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { labels: { color: 'rgba(255,255,255,.7)', font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const v = ctx.parsed.y;
+              const sign = v < 0 ? '-' : '';
+              return ' ' + ctx.dataset.label + ': ' + sign + 'R$ ' + Math.abs(v).toLocaleString('pt-BR');
+            }
+          }
+        }
       },
-      scales:{
-        x:{ticks:{color:'rgba(255,255,255,.5)',font:{size:10}},grid:{color:'rgba(255,255,255,.05)'}},
-        y:{ticks:{color:'rgba(255,255,255,.5)',font:{size:10}},grid:{color:'rgba(255,255,255,.05)'}},
-        y2:{position:'right',ticks:{color:'rgba(34,197,94,.7)',font:{size:10}},grid:{display:false}}
+      scales: {
+        x: {
+          ticks: { color: 'rgba(255,255,255,.4)', font: { size: 10 }, maxTicksLimit: 13 },
+          grid: { color: 'rgba(255,255,255,.04)' }
+        },
+        y: {
+          position: 'left',
+          ticks: {
+            color: 'rgba(232,146,10,.7)', font: { size: 10 },
+            callback: v => 'R$ ' + (v/1000).toFixed(0) + 'k'
+          },
+          grid: { color: 'rgba(255,255,255,.04)' }
+        },
+        y2: {
+          position: 'right',
+          ticks: {
+            color: 'rgba(34,197,94,.7)', font: { size: 10 },
+            callback: v => 'R$ ' + (v/1000).toFixed(0) + 'k'
+          },
+          grid: { display: false }
+        }
       }
     }
   });
