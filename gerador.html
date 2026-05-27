@@ -501,7 +501,7 @@ async function carregarEquipamentosDB() {
     paineisDB    = await rP.json() || [];
     inversoresDB = await rI.json() || [];
     clientesDB   = await rC.json() || [];
-    if(setups.length) renderSetups();
+    if(setups.length) { salvarCondicoesPagamento(); renderSetups(); }
   } catch(e) { console.warn('Equipamentos não carregados:', e); }
 }
 
@@ -1088,6 +1088,7 @@ function preencherPainel(idx, id) {
   s.potModulo = p.potencia_w||''; s.tipoModulo = p.tipo||'';
   s.eficienciaModulo = p.eficiencia_pct||''; s.garFabricacao = p.garantia_produto_anos||'';
   s.garPerfPct = p.garantia_performance_pct||''; s.garPerformance = p.garantia_geracao_anos||'';
+  salvarCondicoesPagamento();
   renderSetups();
   toast('Painel preenchido: '+p.marca+' '+p.modelo);
 }
@@ -1100,6 +1101,7 @@ function preencherInversor(idx, id) {
   s.tipoInversor = inv.tipo||'Inversor'; s.marcaInversor = inv.marca||'';
   s.modeloInversor = inv.modelo||''; s.garInversor = inv.garantia_anos||'';
   s.vidaInversor = '>20 anos';
+  salvarCondicoesPagamento();
   renderSetups();
   atualizarMicroQtd(idx);
   toast('Inversor preenchido: '+inv.marca+' '+inv.modelo);
