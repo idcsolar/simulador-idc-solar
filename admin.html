@@ -1549,45 +1549,78 @@ async function verHistoricoRevisoes(id) {
 
   let revisoes = [];
   try {
-    revisoes = await api('GET', `/rest/v1/revisoes?proposta_id=eq.${id}&order=numero_revisao.desc`);
+    revisoes = await api('GET', `/rest/v1/revisoes?proposta_id=eq.${id}&order=numero_revisao.desc`) || [];
   } catch(e) {}
 
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay open';
   overlay.style.zIndex = '300';
   overlay.innerHTML = `
-    <div class="modal" style="max-width:600px;">
+    <div class="modal" style="max-width:680px;">
       <div class="modal-header">
-        <h3><i class="ph ph-clock-counter-clockwise"></i> Histórico — ${p.cliente_nome}</h3>
+        <h3><i class="ph ph-clock-counter-clockwise"></i> Histórico de revisões — ${p.cliente_nome}</h3>
         <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</button>
       </div>
       <div class="modal-body">
-        <div style="margin-bottom:16px;padding:12px;background:var(--orange-light);border-radius:10px;border:1px solid var(--orange);font-size:13px;">
-          <strong>Versão atual:</strong> Rev. ${p.revisao||0} · ${fmtData(p.updated_at||p.created_at)} · Status: ${p.status||'—'}
+
+        <!-- Versão atual em destaque -->
+        <div style="background:var(--orange-light);border:1px solid var(--orange);border-radius:12px;padding:16px;margin-bottom:20px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+            <div>
+              <span class="badge badge-assinada" style="margin-right:8px;">Versão atual</span>
+              <span style="font-size:13px;font-weight:600;">Rev. ${p.revisao||0}</span>
+            </div>
+            <div style="font-size:12px;color:var(--orange-dark);">
+              ${fmtData(p.updated_at||p.created_at)} · ${p.status||'Rascunho'}
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:12px;">
+            <div><div style="font-size:11px;color:var(--orange-dark);">kWp</div><div style="font-weight:600;">${p.potencia_kwp||'—'}</div></div>
+            <div><div style="font-size:11px;color:var(--orange-dark);">Valor</div><div style="font-weight:600;">${fmtMoeda(p.valor_total)}</div></div>
+            <div><div style="font-size:11px;color:var(--orange-dark);">Payback</div><div style="font-weight:600;">${p.payback_anos ? p.payback_anos+' anos' : '—'}</div></div>
+          </div>
         </div>
-        ${revisoes && revisoes.length ? `
-        <table style="width:100%;border-collapse:collapse;font-size:13px;">
-          <thead><tr style="background:var(--bg);">
-            <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);">Revisão</th>
-            <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);">Data</th>
-            <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);">Motivo</th>
-            <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);">Valor</th>
-          </tr></thead>
-          <tbody>
+
+        ${revisoes.length ? `
+        <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--gray);margin-bottom:12px;">
+          Revisões anteriores
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
           ${revisoes.map(r => {
             let snap = {};
             try { snap = JSON.parse(r.dados_snapshot||'{}'); } catch(e){}
-            return `<tr>
-              <td style="padding:8px 12px;border-bottom:1px solid var(--bg2);">
-                <span class="badge badge-rev">R${r.numero_revisao}</span>
-              </td>
-              <td style="padding:8px 12px;border-bottom:1px solid var(--bg2);">${fmtData(r.created_at)}</td>
-              <td style="padding:8px 12px;border-bottom:1px solid var(--bg2);">${r.motivo||'—'}</td>
-              <td style="padding:8px 12px;border-bottom:1px solid var(--bg2);">${fmtMoeda(snap.valor_total)}</td>
-            </tr>`;
+            // Detecta mudanças entre snapshot e versão atual
+            const mudancas = [];
+            if(snap.valor_total && snap.valor_total !== p.valor_total)
+              mudancas.push(`Valor: ${fmtMoeda(snap.valor_total)} → ${fmtMoeda(p.valor_total)}`);
+            if(snap.potencia_kwp && snap.potencia_kwp !== p.potencia_kwp)
+              mudancas.push(`kWp: ${snap.potencia_kwp} → ${p.potencia_kwp}`);
+            if(snap.tipo_telhado && snap.tipo_telhado !== p.tipo_telhado)
+              mudancas.push(`Telhado: ${snap.tipo_telhado} → ${p.tipo_telhado}`);
+
+            return `
+            <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <span class="badge badge-rev">Rev. ${r.numero_revisao}</span>
+                <span style="font-size:12px;color:var(--gray);">${fmtData(r.created_at)}</span>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:13px;margin-bottom:8px;">
+                <div><span style="color:var(--gray);">kWp:</span> <strong>${snap.potencia_kwp||'—'}</strong></div>
+                <div><span style="color:var(--gray);">Valor:</span> <strong>${fmtMoeda(snap.valor_total)}</strong></div>
+                <div><span style="color:var(--gray);">Payback:</span> <strong>${snap.payback_anos ? snap.payback_anos+' anos' : '—'}</strong></div>
+              </div>
+              ${r.motivo ? `<div style="font-size:12px;color:var(--gray-dark);margin-bottom:6px;"><i class="ph ph-note"></i> ${r.motivo}</div>` : ''}
+              ${mudancas.length ? `
+              <div style="font-size:11px;color:var(--orange-dark);background:var(--orange-light);border-radius:6px;padding:6px 10px;">
+                <i class="ph ph-arrows-left-right"></i> ${mudancas.join(' · ')}
+              </div>` : ''}
+            </div>`;
           }).join('')}
-          </tbody>
-        </table>` : `<div class="empty-state"><i class="ph ph-clock"></i><p>Nenhuma revisão anterior</p></div>`}
+        </div>` : `
+        <div class="empty-state">
+          <i class="ph ph-clock"></i>
+          <p>Esta proposta ainda não possui revisões anteriores</p>
+        </div>`}
       </div>
     </div>`;
   overlay.addEventListener('click', e => { if(e.target===overlay) overlay.remove(); });

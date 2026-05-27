@@ -1461,7 +1461,27 @@ async function gerarPropostaFinal() {
   const fin  = window._financeiro || {};
 
   const dadosProposta = {
-    setups,
+    // Captura valores atuais das condições de pagamento antes de salvar
+    setups: setups.map((s, idx) => {
+      // Força leitura dos campos de condições de pagamento
+      const entrada = parseFloat(document.getElementById('fin-entrada-'+idx)?.value) || 0;
+      const nParc   = parseInt(document.getElementById('fin-parcelas-'+idx)?.value)  || 4;
+      const kit     = parseFloat(document.getElementById('cc-kit-'+idx)?.value)      || s.precoKit || 0;
+      const kitParc = parseInt(document.getElementById('cc-kit-parc-'+idx)?.value)   || 21;
+      const svc     = parseFloat(document.getElementById('cc-svc-'+idx)?.value)      || 0;
+      const svcParc = parseInt(document.getElementById('cc-svc-parc-'+idx)?.value)   || 6;
+      const total   = s.precoFinal || 0;
+      return {
+        ...s,
+        _finEntrada:  entrada,
+        _finParcelas: nParc,
+        _finParcela:  nParc > 0 ? (total - entrada) / nParc : 0,
+        _ccKit:       kit,
+        _ccKitParc:   kitParc,
+        _ccSvc:       svc,
+        _ccSvcParc:   svcParc,
+      };
+    }),
     calc: {
       kwp:          calc.kwp          || 0,
       geracaoMedia: calc.geracaoMedia || 0,
@@ -1573,8 +1593,11 @@ async function gerarPropostaFinal() {
       const dadosPatch = await rPatch.json();
       if(!rPatch.ok) throw new Error(JSON.stringify(dadosPatch));
       toast('✅ Revisão ' + novaRev + ' salva!');
+      // Busca o link_unico original da proposta (não o novo gerado)
+      const linkOriginal = window._editandoLinkUnico || linkUnico;
       window._editandoPropostaId = null;
-      mostrarModalSucesso(proposta.prop_numero + ' Rev.' + novaRev, linkUnico, nome, fone);
+      window._editandoLinkUnico  = null;
+      mostrarModalSucesso(proposta.prop_numero + ' Rev.' + novaRev, linkOriginal, nome, fone);
       if(btn){ btn.disabled=false; btn.innerHTML='<i class="ph ph-file-text"></i> Gerar proposta para o cliente'; }
       return;
     }
@@ -1599,18 +1622,31 @@ async function gerarPropostaFinal() {
     }
     toast('✅ Proposta salva!');
 
-    // Envia para o CRM Solar
+    // Envia para o CRM Solar com condições de pagamento
+    const s0crm = dadosProposta.setups[0] || {};
     await enviarLeadCRM({
       nome:    proposta.cliente_nome,
       fone:    proposta.cliente_fone,
+      email:   proposta.cliente_email,
       cidade:  proposta.cliente_cidade,
       tipo:    proposta.tipo_projeto,
-      conta:   '',
+      conta:   calc.contaAtual ? 'R$ ' + (calc.contaAtual||0).toFixed(2).replace('.',',') : '',
+      economia: calc.economia ? Math.round(calc.economia) : '',
       origem:  'Proposta IDC Solar',
       kwp:     proposta.potencia_kwp,
       valor:   proposta.valor_total,
       payback: proposta.payback_anos,
+      numero:  proposta.prop_numero,
       link:    'https://idcsolar.com.br/proposta?id=' + linkUnico,
+      // Condições de pagamento para preenchimento automático no CRM
+      valor_vista:     proposta.valor_total,
+      fin_entrada:     s0crm._finEntrada  || 0,
+      fin_parcelas:    s0crm._finParcelas || 0,
+      fin_valor_parc:  s0crm._finParcela  || 0,
+      cc_kit:          s0crm._ccKit       || 0,
+      cc_kit_parcelas: s0crm._ccKitParc   || 0,
+      cc_svc:          s0crm._ccSvc       || 0,
+      cc_svc_parcelas: s0crm._ccSvcParc   || 0,
       data:    new Date().toLocaleString('pt-BR')
     });
 
@@ -1781,8 +1817,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
 });
 
 function carregarPropostaParaEdicao(p, editarId) {
-  window._editandoPropostaId = editarId;
+  window._editandoPropostaId   = editarId;
   window._editandoRevisaoAtual = p.revisao || 0;
+  window._editandoLinkUnico    = p.link_unico || null; // preserva o link original
 
   const set = (id, val) => { const el=document.getElementById(id); if(el && val!=null) el.value=val; };
   set('cli-nome',    p.cliente_nome);
