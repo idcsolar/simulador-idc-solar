@@ -545,7 +545,29 @@ function preencherClienteGerador(c) {
 }
 
 // ── NAVEGAÇÃO ──
+function salvarCondicoesPagamento() {
+  setups.forEach((s, idx) => {
+    const g = id => document.getElementById(id);
+    const entrada  = parseFloat(g('fin-entrada-'+idx)?.value)   || 0;
+    const nParc    = parseInt(g('fin-parcelas-'+idx)?.value)    || 4;
+    const kit      = parseFloat(g('cc-kit-'+idx)?.value)        || s.precoKit || 0;
+    const kitParc  = parseInt(g('cc-kit-parc-'+idx)?.value)     || 21;
+    const svc      = parseFloat(g('cc-svc-'+idx)?.value)        || 0;
+    const svcParc  = parseInt(g('cc-svc-parc-'+idx)?.value)     || 6;
+    s._finEntrada  = entrada;
+    s._finParcelas = nParc;
+    s._finParcela  = nParc > 0 ? (s.precoFinal - entrada) / nParc : 0;
+    s._ccKit       = kit;
+    s._ccKitParc   = kitParc;
+    s._ccSvc       = svc;
+    s._ccSvcParc   = svcParc;
+  });
+}
+
 function goStep(n) {
+  // Salva condições de pagamento ao sair da etapa 4
+  if(n === 5) salvarCondicoesPagamento();
+
   for(let i=1;i<=5;i++){
     document.getElementById('step-'+i).style.display = i===n ? 'block' : 'none';
     const btn = document.getElementById('step-btn-'+i);
@@ -1462,23 +1484,7 @@ async function gerarPropostaFinal() {
   const calc = window._calc || {};
   const fin  = window._financeiro || {};
 
-  // Força releitura dos campos de condições de pagamento antes de montar os dados
-  setups.forEach((s, idx) => {
-    const entrada  = parseFloat(document.getElementById('fin-entrada-'+idx)?.value)  || 0;
-    const nParc    = parseInt(document.getElementById('fin-parcelas-'+idx)?.value)   || 4;
-    const kit      = parseFloat(document.getElementById('cc-kit-'+idx)?.value)       || s.precoKit || 0;
-    const kitParc  = parseInt(document.getElementById('cc-kit-parc-'+idx)?.value)    || 21;
-    const svc      = parseFloat(document.getElementById('cc-svc-'+idx)?.value)       || 0;
-    const svcParc  = parseInt(document.getElementById('cc-svc-parc-'+idx)?.value)    || 6;
-    s._finEntrada  = entrada;
-    s._finParcelas = nParc;
-    s._finParcela  = nParc > 0 ? (s.precoFinal - entrada) / nParc : 0;
-    s._ccKit       = kit;
-    s._ccKitParc   = kitParc;
-    s._ccSvc       = svc;
-    s._ccSvcParc   = svcParc;
-  });
-
+  // Condições já foram salvas em salvarCondicoesPagamento() ao avançar para etapa 5
   const dadosProposta = {
     setups: setups.map(s => ({...s})),
     calc: {
