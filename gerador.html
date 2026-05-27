@@ -708,120 +708,133 @@ function renderChartGeracao(geracao, consumo) {
 // ── FINANCEIRO ──
 function calcularFinanceiro() {
   if(!window._calc) return;
-  const calc = window._calc;
+  const calc  = window._calc;
   const setup = setups[0];
   if(!setup || !setup.precoFinal) return;
 
   const investimento = setup.precoFinal;
-  const infE = parseFloat(document.getElementById('fin-inf-energia').value)/100 || 0.10;
-  const infA = parseFloat(document.getElementById('fin-inf-anual').value)/100 || 0.04;
-  const taxaJ = parseFloat(document.getElementById('fin-taxa-juros').value)/100 || 0.06;
-  const custOp = parseFloat(document.getElementById('fin-custo-op').value)/100 || 0.10;
-  const deg1 = parseFloat(document.getElementById('fin-deg1').value)/100 || 0.02;
-  const degN = parseFloat(document.getElementById('fin-deg').value)/100 || 0.005;
-  const manut = parseFloat(document.getElementById('fin-manut').value)/100 || 0.005;
-  const vida = parseInt(document.getElementById('fin-vida').value) || 25;
+  const infE   = parseFloat(document.getElementById('fin-inf-energia').value)/100 || 0.10;
+  const infA   = parseFloat(document.getElementById('fin-inf-anual').value)/100   || 0.04;
+  const taxaJ  = parseFloat(document.getElementById('fin-taxa-juros').value)/100  || 0.06;
+  const custOp = parseFloat(document.getElementById('fin-custo-op').value)/100    || 0.10;
+  const deg1   = parseFloat(document.getElementById('fin-deg1').value)/100        || 0.02;
+  const degN   = parseFloat(document.getElementById('fin-deg').value)/100         || 0.005;
+  const manut  = parseFloat(document.getElementById('fin-manut').value)/100       || 0.005;
+  const vida   = parseInt(document.getElementById('fin-vida').value)              || 25;
   const taxaDesconto = taxaJ + custOp;
 
-  const fluxos = [-investimento];
-  let acumulado = -investimento;
-  let vpl = -investimento;
-  let payback = null;
-  let economia25 = 0;
-  const fcl = [-investimento];
+  // Custo estimado de reposição do inversor no ano 20
+  // Estimativa: ~30% do valor do kit ou R$5.000 min
+  const custoInversor = Math.max(investimento * 0.15, 5000);
 
-  for(let ano=1; ano<=vida; ano++) {
-    const fatorDeg = ano===1 ? (1-deg1) : Math.pow(1-degN, ano-1)*(1-deg1);
-    const fatorInfE = Math.pow(1+infE, ano-1);
-    const fatorInfA = Math.pow(1+infA, ano-1);
-    const custManut = investimento * manut * fatorInfA;
-    const economiaAno = calc.economia * 12 * fatorDeg * fatorInfE;
-    const fluxo = economiaAno - custManut;
-    fluxos.push(fluxo);
+  const fluxos    = [-investimento]; // fluxo anual
+  const fcl       = [-investimento]; // FCL acumulado
+  let acumulado   = -investimento;
+  let vpl         = -investimento;
+  let payback     = null;
+  let economia25  = 0;
+
+  for(let ano = 1; ano <= vida; ano++) {
+    const fatorDeg   = ano === 1 ? (1-deg1) : Math.pow(1-degN, ano-1) * (1-deg1);
+    const fatorInfE  = Math.pow(1+infE, ano-1);
+    const fatorInfA  = Math.pow(1+infA, ano-1);
+    const custManut  = investimento * manut * fatorInfA;
+    const economiaAno= calc.economia * 12 * fatorDeg * fatorInfE;
+
+    // Ano 20: inclui custo de substituição do inversor
+    const custExtra  = ano === 20 ? custoInversor * fatorInfA : 0;
+    const fluxo      = economiaAno - custManut - custExtra;
+
+    fluxos.push(Math.round(fluxo));
     acumulado += fluxo;
-    fcl.push(acumulado);
-    vpl += fluxo / Math.pow(1+taxaDesconto, ano);
+    fcl.push(Math.round(acumulado));
+    vpl      += fluxo / Math.pow(1+taxaDesconto, ano);
     economia25 += economiaAno;
+
     if(acumulado >= 0 && payback === null) {
       const prev = acumulado - fluxo;
       payback = parseFloat((ano - 1 + Math.abs(prev)/fluxo).toFixed(1));
     }
   }
 
+  // TIR Newton-Raphson
   let tir = 0;
   try {
     let r = 0.2;
-    for(let iter=0;iter<100;iter++) {
-      let f=0,df=0;
-      fluxos.forEach((fc,t)=>{ f+=fc/Math.pow(1+r,t); df-=t*fc/Math.pow(1+r,t+1); });
+    for(let iter = 0; iter < 100; iter++) {
+      let f=0, df=0;
+      fluxos.forEach((fc,t) => { f+=fc/Math.pow(1+r,t); df-=t*fc/Math.pow(1+r,t+1); });
       const nr = r - f/df;
-      if(Math.abs(nr-r)<0.0001){ r=nr; break; }
+      if(Math.abs(nr-r) < 0.0001){ r=nr; break; }
       r = nr;
     }
     tir = r;
   } catch(e) {}
 
-  document.getElementById('resultado-financeiro').style.display='block';
-  document.getElementById('fin-tir').textContent = (tir*100).toFixed(2)+'%';
-  document.getElementById('fin-payback').textContent = (payback||'—')+' anos';
-  document.getElementById('fin-vpl').textContent = 'R$ '+Math.round(vpl).toLocaleString('pt-BR');
-  document.getElementById('fin-economia25').textContent = 'R$ '+Math.round(economia25).toLocaleString('pt-BR');
+  // Custo da energia solar = investimento / (geração total 25 anos)
+  const ger25 = (calc.geracaoMedia || 0) * 12 * vida;
+  const custoSolar = ger25 > 0 ? investimento / ger25 : 0;
 
-  renderChartFluxo(fluxos, fcl, payback);
-  window._financeiro = { tir, payback, vpl, economia25, fluxos, fcl, investimento };
+  document.getElementById('resultado-financeiro').style.display = 'block';
+  document.getElementById('fin-tir').textContent       = (tir*100).toFixed(2)+'%';
+  document.getElementById('fin-payback').textContent   = (payback||'—')+' anos';
+  document.getElementById('fin-vpl').textContent       = 'R$ '+Math.round(vpl).toLocaleString('pt-BR');
+  document.getElementById('fin-economia25').textContent= 'R$ '+Math.round(economia25).toLocaleString('pt-BR');
+
+  renderChartFluxo(fluxos, fcl, payback, investimento, calc.tarifa||0.90, custoSolar);
+  window._financeiro = { tir, payback, vpl, economia25, fluxos, fcl, investimento, custoSolar };
 }
 
-function renderChartFluxo(fluxos, fcl, payback) {
+function renderChartFluxo(fluxos, fcl, payback, investimento, tarifaAtual, custoSolar) {
   if(chartFluxo) chartFluxo.destroy();
   const ctx = document.getElementById('chart-fluxo')?.getContext('2d');
   if(!ctx) return;
 
-  const anos = fluxos.map((_,i) => 'Ano ' + i);
+  const anos = fluxos.map((_,i) => i);
 
-  // Barras: vermelho onde FCL acumulado ainda negativo, laranja quando positivo
-  const bgColors = fluxos.map((v,i) =>
+  // Barras fluxo anual: vermelho antes do payback, laranja depois
+  const bgFluxo = fluxos.map((v,i) =>
     i === 0 ? 'rgba(239,68,68,.85)' :
-    fcl[i] < 0 ? 'rgba(239,68,68,.6)' :
+    fcl[i] < 0 ? 'rgba(239,68,68,.65)' :
     'rgba(232,146,10,.85)'
   );
 
-  // Ponto de cruzamento — destaca o ano do payback na linha verde
-  const pointRadii = fcl.map((v,i) => {
-    if(i > 0 && fcl[i] >= 0 && fcl[i-1] < 0) return 8;
-    return 2;
-  });
-  const pointColors = fcl.map((v,i) => {
-    if(i > 0 && fcl[i] >= 0 && fcl[i-1] < 0) return '#4ade80';
-    return 'rgba(34,197,94,.6)';
-  });
+  // FCL acumulado: barras separadas — negativo em vermelho escuro, positivo em verde
+  const bgFCL = fcl.map(v => v < 0 ? 'rgba(185,28,28,.5)' : 'rgba(134,239,172,.75)');
+
+  // Destaca o ano do payback
+  const paybackAno = payback ? Math.ceil(payback) : null;
+  const borderFCL = fcl.map((_,i) =>
+    i === paybackAno ? '#16a34a' : 'transparent'
+  );
+  const borderWidthFCL = fcl.map((_,i) => i === paybackAno ? 2 : 0);
 
   chartFluxo = new Chart(ctx, {
+    type: 'bar',
     data: {
       labels: anos,
       datasets: [
         {
-          type: 'bar',
-          label: 'Economia anual*',
-          data: fluxos.map(v => Math.round(v)),
-          backgroundColor: bgColors,
-          borderRadius: 3,
+          label: 'Fluxo de Caixa anual*',
+          data:  fluxos.map(v => Math.round(v)),
+          backgroundColor: bgFluxo,
+          borderRadius: 2,
           yAxisID: 'y',
-          order: 2
+          order: 1,
+          barPercentage: 0.5,
+          categoryPercentage: 0.7
         },
         {
-          type: 'line',
           label: 'FCL Acumulado*',
-          data: fcl.map(v => Math.round(v)),
-          borderColor: 'rgba(34,197,94,1)',
-          backgroundColor: 'rgba(34,197,94,.08)',
-          borderWidth: 2.5,
-          pointRadius: pointRadii,
-          pointBackgroundColor: pointColors,
-          pointBorderColor: pointColors,
-          fill: true,
-          tension: 0.3,
-          yAxisID: 'y2',
-          order: 1
+          data:  fcl.map(v => Math.round(v)),
+          backgroundColor: bgFCL,
+          borderColor: borderFCL,
+          borderWidth: borderWidthFCL,
+          borderRadius: 2,
+          yAxisID: 'y',
+          order: 2,
+          barPercentage: 0.5,
+          categoryPercentage: 0.7
         }
       ]
     },
@@ -829,41 +842,56 @@ function renderChartFluxo(fluxos, fcl, payback) {
       responsive: true,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { labels: { color: 'rgba(255,255,255,.7)', font: { size: 11 } } },
+        legend: {
+          labels: { color: 'rgba(255,255,255,.7)', font: { size: 11 } }
+        },
         tooltip: {
           callbacks: {
             label: ctx => {
               const v = ctx.parsed.y;
-              const sign = v < 0 ? '-' : '';
-              return ' ' + ctx.dataset.label + ': ' + sign + 'R$ ' + Math.abs(v).toLocaleString('pt-BR');
+              return ' ' + ctx.dataset.label + ': R$ ' + v.toLocaleString('pt-BR');
             }
           }
         }
       },
       scales: {
         x: {
-          ticks: { color: 'rgba(255,255,255,.4)', font: { size: 10 }, maxTicksLimit: 13 },
-          grid: { color: 'rgba(255,255,255,.04)' }
+          ticks: { color: 'rgba(255,255,255,.5)', font: { size: 10 } },
+          grid:  { color: 'rgba(255,255,255,.04)' }
         },
         y: {
-          position: 'left',
           ticks: {
-            color: 'rgba(232,146,10,.7)', font: { size: 10 },
+            color: 'rgba(255,255,255,.5)', font: { size: 10 },
             callback: v => 'R$ ' + (v/1000).toFixed(0) + 'k'
           },
-          grid: { color: 'rgba(255,255,255,.04)' }
-        },
-        y2: {
-          position: 'right',
-          ticks: {
-            color: 'rgba(34,197,94,.7)', font: { size: 10 },
-            callback: v => 'R$ ' + (v/1000).toFixed(0) + 'k'
-          },
-          grid: { display: false }
+          grid: { color: 'rgba(255,255,255,.06)' }
         }
       }
     }
   });
+
+  // Adiciona caixa de informações no topo (igual à proposta original)
+  const wrapper = ctx.canvas.parentElement;
+  const oldInfo = wrapper.querySelector('.chart-info-box');
+  if(oldInfo) oldInfo.remove();
+
+  const info = document.createElement('div');
+  info.className = 'chart-info-box';
+  info.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;';
+  info.innerHTML = `
+    <div style="background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:6px 12px;font-size:12px;color:white;">
+      TIR: <strong style="color:#4ade80;">${((window._financeiro?.tir||0)*100).toFixed(2)}%</strong>
+    </div>
+    <div style="background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:6px 12px;font-size:12px;color:white;">
+      Custo atual da energia: <strong>R$ ${(tarifaAtual||0.90).toFixed(2).replace('.',',')}</strong>
+    </div>
+    <div style="background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:6px 12px;font-size:12px;color:white;">
+      Custo da energia solar: <strong>R$ ${(custoSolar||0).toFixed(2).replace('.',',')}</strong>
+    </div>
+    <div style="background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:6px 12px;font-size:12px;color:white;">
+      Retorno do investimento: <strong style="color:#4ade80;">${payback||'—'} anos</strong>
+    </div>`;
+  wrapper.insertBefore(info, ctx.canvas);
 }
 
 // ── SETUPS ──
@@ -1201,9 +1229,138 @@ function calcPrecoSetup(idx) {
       <span>R$/Wp: <strong style="color:var(--orange-dark)">${precoWp.toFixed(2).replace('.',',')}</strong></span>
       <span>kWp real: <strong style="color:var(--orange-dark)">${kwp.toFixed(2)}</strong></span>
       ${window._calc ? `<span>Nec.: <strong style="color:var(--orange-dark)">${window._calc.kwp.toFixed(2)} kWp</strong></span>` : ''}
+    </div>
+
+    <!-- Condições de pagamento -->
+    <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px;">
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--orange);margin-bottom:12px;">
+        <i class="ph ph-currency-dollar"></i> Condições de pagamento
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+
+        <!-- À vista -->
+        <div style="background:white;border:1px solid var(--border);border-radius:10px;padding:14px;">
+          <div style="font-size:11px;font-weight:700;color:var(--gray-dark);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em;">À vista</div>
+          <div style="font-size:18px;font-weight:700;color:var(--black);">${fmtR(precoFinal)}</div>
+        </div>
+
+        <!-- Financiamento IDC -->
+        <div style="background:white;border:1px solid var(--border);border-radius:10px;padding:14px;">
+          <div style="font-size:11px;font-weight:700;color:var(--gray-dark);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em;">Financiamento IDC</div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+              <label style="font-size:11px;color:var(--gray);">Entrada (R$)</label>
+              <input type="number" id="fin-entrada-${idx}" placeholder="Ex: 9000" min="0"
+                style="width:110px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;text-align:right;"
+                oninput="calcularParcelaFinanciamento(${idx})"/>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+              <label style="font-size:11px;color:var(--gray);">Nº parcelas</label>
+              <input type="number" id="fin-parcelas-${idx}" value="4" min="1" max="60"
+                style="width:110px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;text-align:right;"
+                oninput="calcularParcelaFinanciamento(${idx})"/>
+            </div>
+            <div id="fin-resultado-${idx}" style="font-size:12px;color:var(--orange-dark);font-weight:600;margin-top:4px;"></div>
+          </div>
+        </div>
+
+        <!-- Cartão de crédito - equipamentos -->
+        <div style="background:white;border:1px solid var(--border);border-radius:10px;padding:14px;">
+          <div style="font-size:11px;font-weight:700;color:var(--gray-dark);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em;">Cartão — Equipamentos</div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+              <label style="font-size:11px;color:var(--gray);">Valor kit (R$)</label>
+              <input type="number" id="cc-kit-${idx}" value="${kit.toFixed(0)}" min="0"
+                style="width:110px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;text-align:right;"
+                oninput="calcularParcelaCartao(${idx})"/>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+              <label style="font-size:11px;color:var(--gray);">Nº parcelas</label>
+              <input type="number" id="cc-kit-parc-${idx}" value="21" min="1" max="21"
+                style="width:110px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;text-align:right;"
+                oninput="calcularParcelaCartao(${idx})"/>
+            </div>
+            <div id="cc-kit-res-${idx}" style="font-size:12px;color:var(--orange-dark);font-weight:600;margin-top:4px;"></div>
+          </div>
+        </div>
+
+        <!-- Cartão de crédito - serviços -->
+        <div style="background:white;border:1px solid var(--border);border-radius:10px;padding:14px;">
+          <div style="font-size:11px;font-weight:700;color:var(--gray-dark);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em;">Cartão — Serviços</div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+              <label style="font-size:11px;color:var(--gray);">Valor serviços (R$)</label>
+              <input type="number" id="cc-svc-${idx}" value="${(precoFinal - kit).toFixed(0)}" min="0"
+                style="width:110px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;text-align:right;"
+                oninput="calcularParcelaCartao(${idx})"/>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+              <label style="font-size:11px;color:var(--gray);">Nº parcelas</label>
+              <input type="number" id="cc-svc-parc-${idx}" value="6" min="1" max="12"
+                style="width:110px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;text-align:right;"
+                oninput="calcularParcelaCartao(${idx})"/>
+            </div>
+            <div id="cc-svc-res-${idx}" style="font-size:12px;color:var(--orange-dark);font-weight:600;margin-top:4px;"></div>
+          </div>
+        </div>
+
+      </div>
     </div>`;
 
+  // Calcula parcelas iniciais
+  setTimeout(() => {
+    calcularParcelaFinanciamento(idx);
+    calcularParcelaCartao(idx);
+  }, 50);
+
   calcularFinanceiro();
+}
+
+// ── CONDIÇÕES DE PAGAMENTO ──
+function calcularParcelaFinanciamento(idx) {
+  const s = setups[idx]; if(!s) return;
+  const total   = s.precoFinal || 0;
+  const entrada = parseFloat(document.getElementById('fin-entrada-'+idx)?.value) || 0;
+  const nParc   = parseInt(document.getElementById('fin-parcelas-'+idx)?.value)  || 4;
+  const resto   = total - entrada;
+  const parcela = nParc > 0 ? resto / nParc : 0;
+  const el = document.getElementById('fin-resultado-'+idx);
+  if(el && total > 0) {
+    el.textContent = entrada > 0
+      ? `Ent. ${fmtR(entrada)} + ${nParc}x de ${fmtR(parcela)}`
+      : `${nParc}x de ${fmtR(total/nParc)}`;
+    // Salva no setup para exportar na proposta
+    s._finEntrada  = entrada;
+    s._finParcelas = nParc;
+    s._finParcela  = parcela;
+  }
+}
+
+function calcularParcelaCartao(idx) {
+  const s = setups[idx]; if(!s) return;
+  const kit     = parseFloat(document.getElementById('cc-kit-'+idx)?.value)      || 0;
+  const kitParc = parseInt(document.getElementById('cc-kit-parc-'+idx)?.value)   || 21;
+  const svc     = parseFloat(document.getElementById('cc-svc-'+idx)?.value)      || 0;
+  const svcParc = parseInt(document.getElementById('cc-svc-parc-'+idx)?.value)   || 6;
+  const elKit = document.getElementById('cc-kit-res-'+idx);
+  const elSvc = document.getElementById('cc-svc-res-'+idx);
+  if(elKit && kit > 0) elKit.textContent = `Até ${kitParc}x de ${fmtR(kit/kitParc)}`;
+  if(elSvc && svc > 0) elSvc.textContent = `Até ${svcParc}x de ${fmtR(svc/svcParc)}`;
+  s._ccKit = kit; s._ccKitParc = kitParc;
+  s._ccSvc = svc; s._ccSvcParc = svcParc;
+}
+
+// ── ENVIO AO CRM ──
+const CRM_WEBHOOK = 'https://script.google.com/macros/s/AKfycbxld97wBGdHUUjUAu_yyshHax93MO0YFNw2wEZmTXGs24LP2vPVedIaYLnP2lQjOw/exec';
+
+async function enviarLeadCRM(dados) {
+  try {
+    await fetch(CRM_WEBHOOK, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dados)
+    });
+  } catch(e) { console.warn('CRM não enviado:', e); }
 }
 
 // ── REVISÃO ──
@@ -1350,8 +1507,29 @@ async function gerarPropostaFinal() {
       body: JSON.stringify(proposta)
     });
     const dados = await r.json();
-    if(!r.ok) throw new Error(JSON.stringify(dados));
+    if(!r.ok) {
+      const errMsg = dados?.message || dados?.error || dados?.hint || JSON.stringify(dados);
+      console.error('Supabase erro:', errMsg);
+      alert('Erro ao salvar proposta:\n' + errMsg + '\n\nVerifique as políticas RLS no Supabase.');
+      throw new Error(errMsg);
+    }
     toast('✅ Proposta salva!');
+
+    // Envia para o CRM Solar
+    await enviarLeadCRM({
+      nome:    proposta.cliente_nome,
+      fone:    proposta.cliente_fone,
+      cidade:  proposta.cliente_cidade,
+      tipo:    proposta.tipo_projeto,
+      conta:   '',
+      origem:  'Proposta IDC Solar',
+      kwp:     proposta.potencia_kwp,
+      valor:   proposta.valor_total,
+      payback: proposta.payback_anos,
+      link:    'https://idcsolar.com.br/proposta?id=' + linkUnico,
+      data:    new Date().toLocaleString('pt-BR')
+    });
+
     mostrarModalSucesso(proposta.prop_numero, linkUnico, nome, fone);
   } catch(e) {
     console.error('Erro ao salvar:', e);
