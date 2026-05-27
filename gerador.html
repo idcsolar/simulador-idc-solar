@@ -1107,8 +1107,9 @@ function renderPrecoSetups() {
       <div class="card-body">
         <div class="form-grid">
           <div class="form-field"><label>Preço do kit (R$)</label>
-            <input type="number" id="p${idx}-kit" value="${s.precoKit}" placeholder="0"
-              oninput="setups[${idx}].precoKit=parseFloat(this.value)||0;calcPrecoSetup(${idx})"/></div>
+            <input type="text" id="p${idx}-kit" value="${s.precoKit > 0 ? s.precoKit.toFixed(2).replace('.',',') : ''}" placeholder="0,00"
+              oninput="setups[${idx}].precoKit=parseMoeda(this.value);calcPrecoSetup(${idx})"
+              onfocus="this.select()"/></div>
           <div class="form-field"><label>Mão de obra (R$)</label>
             <input type="number" id="p${idx}-mo" value="${s.valorInstalacao}" placeholder="0"
               oninput="setups[${idx}].valorInstalacao=parseFloat(this.value)||0;calcPrecoSetup(${idx})"/></div>
@@ -1347,15 +1348,15 @@ function calcularParcelaFinanciamento(idx) {
   const nParc   = parseInt(document.getElementById('fin-parcelas-'+idx)?.value)  || 4;
   const resto   = total - entrada;
   const parcela = nParc > 0 ? resto / nParc : 0;
+  // Salva SEMPRE no setup, independente do DOM
+  s._finEntrada  = entrada;
+  s._finParcelas = nParc;
+  s._finParcela  = parcela;
   const el = document.getElementById('fin-resultado-'+idx);
   if(el && total > 0) {
     el.textContent = entrada > 0
       ? `Ent. ${fmtR(entrada)} + ${nParc}x de ${fmtR(parcela)}`
       : `${nParc}x de ${fmtR(total/nParc)}`;
-    // Salva no setup para exportar na proposta
-    s._finEntrada  = entrada;
-    s._finParcelas = nParc;
-    s._finParcela  = parcela;
   }
 }
 
@@ -1365,12 +1366,13 @@ function calcularParcelaCartao(idx) {
   const kitParc = parseInt(document.getElementById('cc-kit-parc-'+idx)?.value)   || 21;
   const svc     = parseFloat(document.getElementById('cc-svc-'+idx)?.value)      || 0;
   const svcParc = parseInt(document.getElementById('cc-svc-parc-'+idx)?.value)   || 6;
+  // Salva SEMPRE no setup
+  s._ccKit = kit; s._ccKitParc = kitParc;
+  s._ccSvc = svc; s._ccSvcParc = svcParc;
   const elKit = document.getElementById('cc-kit-res-'+idx);
   const elSvc = document.getElementById('cc-svc-res-'+idx);
   if(elKit && kit > 0) elKit.textContent = `Até ${kitParc}x de ${fmtR(kit/kitParc)}`;
   if(elSvc && svc > 0) elSvc.textContent = `Até ${svcParc}x de ${fmtR(svc/svcParc)}`;
-  s._ccKit = kit; s._ccKitParc = kitParc;
-  s._ccSvc = svc; s._ccSvcParc = svcParc;
 }
 
 // ── ENVIO AO CRM ──
@@ -1460,28 +1462,25 @@ async function gerarPropostaFinal() {
   const calc = window._calc || {};
   const fin  = window._financeiro || {};
 
+  // Força releitura dos campos de condições de pagamento antes de montar os dados
+  setups.forEach((s, idx) => {
+    const entrada  = parseFloat(document.getElementById('fin-entrada-'+idx)?.value)  || 0;
+    const nParc    = parseInt(document.getElementById('fin-parcelas-'+idx)?.value)   || 4;
+    const kit      = parseFloat(document.getElementById('cc-kit-'+idx)?.value)       || s.precoKit || 0;
+    const kitParc  = parseInt(document.getElementById('cc-kit-parc-'+idx)?.value)    || 21;
+    const svc      = parseFloat(document.getElementById('cc-svc-'+idx)?.value)       || 0;
+    const svcParc  = parseInt(document.getElementById('cc-svc-parc-'+idx)?.value)    || 6;
+    s._finEntrada  = entrada;
+    s._finParcelas = nParc;
+    s._finParcela  = nParc > 0 ? (s.precoFinal - entrada) / nParc : 0;
+    s._ccKit       = kit;
+    s._ccKitParc   = kitParc;
+    s._ccSvc       = svc;
+    s._ccSvcParc   = svcParc;
+  });
+
   const dadosProposta = {
-    // Captura valores atuais das condições de pagamento antes de salvar
-    setups: setups.map((s, idx) => {
-      // Força leitura dos campos de condições de pagamento
-      const entrada = parseFloat(document.getElementById('fin-entrada-'+idx)?.value) || 0;
-      const nParc   = parseInt(document.getElementById('fin-parcelas-'+idx)?.value)  || 4;
-      const kit     = parseFloat(document.getElementById('cc-kit-'+idx)?.value)      || s.precoKit || 0;
-      const kitParc = parseInt(document.getElementById('cc-kit-parc-'+idx)?.value)   || 21;
-      const svc     = parseFloat(document.getElementById('cc-svc-'+idx)?.value)      || 0;
-      const svcParc = parseInt(document.getElementById('cc-svc-parc-'+idx)?.value)   || 6;
-      const total   = s.precoFinal || 0;
-      return {
-        ...s,
-        _finEntrada:  entrada,
-        _finParcelas: nParc,
-        _finParcela:  nParc > 0 ? (total - entrada) / nParc : 0,
-        _ccKit:       kit,
-        _ccKitParc:   kitParc,
-        _ccSvc:       svc,
-        _ccSvcParc:   svcParc,
-      };
-    }),
+    setups: setups.map(s => ({...s})),
     calc: {
       kwp:          calc.kwp          || 0,
       geracaoMedia: calc.geracaoMedia || 0,
@@ -1528,7 +1527,7 @@ async function gerarPropostaFinal() {
     concessionaria:    getConcessionaria(),
     consumo_medio:     calc.media        || 0,
     potencia_kwp:      setups[0]?.kwpCalculado || calc.kwp || 0,
-    valor_total:       setups[0]?.precoFinal   || 0,
+    valor_total:       Math.round((setups[0]?.precoFinal || 0) * 100) / 100,
     economia_estimada: calc.economia     || 0,
     payback_anos:      fin.payback       || null,
     status:            'Enviada',
@@ -1634,7 +1633,7 @@ async function gerarPropostaFinal() {
       economia: calc.economia ? Math.round(calc.economia) : '',
       origem:  'Proposta IDC Solar',
       kwp:     proposta.potencia_kwp,
-      valor:   proposta.valor_total,
+      valor:   parseFloat((proposta.valor_total||0).toFixed(2)),
       payback: proposta.payback_anos,
       numero:  proposta.prop_numero,
       link:    'https://idcsolar.com.br/proposta?id=' + linkUnico,
@@ -1747,6 +1746,18 @@ function novaPropostaCompleto() {
 }
 
 // ── UTILS ──
+// Converte valor com vírgula ou ponto para float
+function parseMoeda(v) {
+  if(!v) return 0;
+  // Remove tudo exceto dígitos, vírgula e ponto
+  const s = String(v).replace(/[^\d,.]/g, '');
+  // Se tem vírgula como separador decimal (pt-BR): 15.000,99 ou 15000,99
+  if(s.includes(',')) {
+    return parseFloat(s.replace(/\./g,'').replace(',','.')) || 0;
+  }
+  return parseFloat(s) || 0;
+}
+
 function mascaraTel(el) {
   let v = el.value.replace(/\D/g,'').substring(0,11);
   if(v.length>10) v='('+v.substring(0,2)+') '+v.substring(2,7)+'-'+v.substring(7,11);
