@@ -1298,13 +1298,13 @@ function calcPrecoSetup(idx) {
               <label style="font-size:11px;color:var(--gray);">Entrada (R$)</label>
               <input type="number" id="fin-entrada-${idx}" placeholder="Ex: 9000" min="0" value="${s._finEntrada||''}"
                 style="width:110px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;text-align:right;"
-                oninput="calcularParcelaFinanciamento(${idx})"/>
+                oninput="setups[${idx}]._finEntrada=parseFloat(this.value)||0;calcularParcelaFinanciamento(${idx})"/>
             </div>
             <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
               <label style="font-size:11px;color:var(--gray);">Nº parcelas</label>
               <input type="number" id="fin-parcelas-${idx}" value="${s._finParcelas||4}" min="1" max="60"
                 style="width:110px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;text-align:right;"
-                oninput="calcularParcelaFinanciamento(${idx})"/>
+                oninput="setups[${idx}]._finParcelas=parseInt(this.value)||4;calcularParcelaFinanciamento(${idx})"/>
             </div>
             <div id="fin-resultado-${idx}" style="font-size:12px;color:var(--orange-dark);font-weight:600;margin-top:4px;"></div>
           </div>
@@ -1318,13 +1318,13 @@ function calcPrecoSetup(idx) {
               <label style="font-size:11px;color:var(--gray);">Valor kit (R$)</label>
               <input type="number" id="cc-kit-${idx}" value="${s._ccKit||kit.toFixed(0)}" min="0"
                 style="width:110px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;text-align:right;"
-                oninput="calcularParcelaCartao(${idx})"/>
+                oninput="setups[${idx}]._ccKit=parseFloat(this.value)||0;calcularParcelaCartao(${idx})"/>
             </div>
             <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
               <label style="font-size:11px;color:var(--gray);">Nº parcelas</label>
               <input type="number" id="cc-kit-parc-${idx}" value="${s._ccKitParc||21}" min="1" max="21"
                 style="width:110px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;text-align:right;"
-                oninput="calcularParcelaCartao(${idx})"/>
+                oninput="setups[${idx}]._ccKitParc=parseInt(this.value)||21;calcularParcelaCartao(${idx})"/>
             </div>
             <div id="cc-kit-res-${idx}" style="font-size:12px;color:var(--orange-dark);font-weight:600;margin-top:4px;"></div>
           </div>
@@ -1338,13 +1338,13 @@ function calcPrecoSetup(idx) {
               <label style="font-size:11px;color:var(--gray);">Valor serviços (R$)</label>
               <input type="number" id="cc-svc-${idx}" value="${s._ccSvc||(precoFinal-kit).toFixed(0)}" min="0"
                 style="width:110px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;text-align:right;"
-                oninput="calcularParcelaCartao(${idx})"/>
+                oninput="setups[${idx}]._ccSvc=parseFloat(this.value)||0;calcularParcelaCartao(${idx})"/>
             </div>
             <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
               <label style="font-size:11px;color:var(--gray);">Nº parcelas</label>
               <input type="number" id="cc-svc-parc-${idx}" value="${s._ccSvcParc||6}" min="1" max="12"
                 style="width:110px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;text-align:right;"
-                oninput="calcularParcelaCartao(${idx})"/>
+                oninput="setups[${idx}]._ccSvcParc=parseInt(this.value)||6;calcularParcelaCartao(${idx})"/>
             </div>
             <div id="cc-svc-res-${idx}" style="font-size:12px;color:var(--orange-dark);font-weight:600;margin-top:4px;"></div>
           </div>
@@ -1366,11 +1366,10 @@ function calcPrecoSetup(idx) {
 function calcularParcelaFinanciamento(idx) {
   const s = setups[idx]; if(!s) return;
   const total   = s.precoFinal || 0;
-  const entrada = parseFloat(document.getElementById('fin-entrada-'+idx)?.value) || 0;
-  const nParc   = parseInt(document.getElementById('fin-parcelas-'+idx)?.value)  || 4;
-  const resto   = total - entrada;
-  const parcela = nParc > 0 ? resto / nParc : 0;
-  // Salva SEMPRE no setup, independente do DOM
+  const entrada = s._finEntrada  || parseFloat(document.getElementById('fin-entrada-'+idx)?.value)  || 0;
+  const nParc   = s._finParcelas || parseInt(document.getElementById('fin-parcelas-'+idx)?.value)   || 4;
+  const parcela = nParc > 0 ? (total - entrada) / nParc : 0;
+  // Sempre mantém sincronizado
   s._finEntrada  = entrada;
   s._finParcelas = nParc;
   s._finParcela  = parcela;
@@ -1384,11 +1383,11 @@ function calcularParcelaFinanciamento(idx) {
 
 function calcularParcelaCartao(idx) {
   const s = setups[idx]; if(!s) return;
-  const kit     = parseFloat(document.getElementById('cc-kit-'+idx)?.value)      || 0;
-  const kitParc = parseInt(document.getElementById('cc-kit-parc-'+idx)?.value)   || 21;
-  const svc     = parseFloat(document.getElementById('cc-svc-'+idx)?.value)      || 0;
-  const svcParc = parseInt(document.getElementById('cc-svc-parc-'+idx)?.value)   || 6;
-  // Salva SEMPRE no setup
+  const kit     = s._ccKit     || parseFloat(document.getElementById('cc-kit-'+idx)?.value)     || 0;
+  const kitParc = s._ccKitParc || parseInt(document.getElementById('cc-kit-parc-'+idx)?.value)  || 21;
+  const svc     = s._ccSvc     || parseFloat(document.getElementById('cc-svc-'+idx)?.value)     || 0;
+  const svcParc = s._ccSvcParc || parseInt(document.getElementById('cc-svc-parc-'+idx)?.value)  || 6;
+  // Sempre mantém sincronizado
   s._ccKit = kit; s._ccKitParc = kitParc;
   s._ccSvc = svc; s._ccSvcParc = svcParc;
   const elKit = document.getElementById('cc-kit-res-'+idx);
@@ -1484,7 +1483,8 @@ async function gerarPropostaFinal() {
   const calc = window._calc || {};
   const fin  = window._financeiro || {};
 
-  // Condições já foram salvas em salvarCondicoesPagamento() ao avançar para etapa 5
+  // Garante que as condições de pagamento estão salvas (independente da navegação entre etapas)
+  salvarCondicoesPagamento();
   const dadosProposta = {
     setups: setups.map(s => ({...s})),
     calc: {
