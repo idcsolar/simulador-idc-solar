@@ -502,25 +502,22 @@ tbody td:first-child { color: var(--black); font-weight: 500; }
   <aside class="sidebar">
     <div class="sidebar-logo">IDC <span>Solar</span></div>
     <nav>
-      <div class="nav-item active" onclick="showSection('dashboard')">
+      <div class="nav-item active" data-section="dashboard" onclick="showSection('dashboard')">
         <i class="ph ph-squares-four"></i> Dashboard
       </div>
-      <div class="nav-item" onclick="showSection('propostas')">
+      <div class="nav-item" data-section="propostas" onclick="showSection('propostas')">
         <i class="ph ph-file-text"></i> Propostas
       </div>
-      <a href="https://simulador.idcsolar.com.br/gerador.html" target="_blank" style="text-decoration:none;">
-        <div class="nav-item" style="background:rgba(232,146,10,.15);border-left:3px solid var(--orange);">
-          <i class="ph ph-pencil-line" style="color:var(--orange);"></i>
-          <span style="color:var(--orange);font-weight:600;">Gerar proposta</span>
-        </div>
-      </a>
-      <div class="nav-item" onclick="showSection('clientes')">
+      <div class="nav-item" onclick="window.open('https://simulador.idcsolar.com.br/gerador.html','_blank')">
+        <i class="ph ph-pencil-line"></i> Gerar proposta
+      </div>
+      <div class="nav-item" data-section="clientes" onclick="showSection('clientes')">
         <i class="ph ph-users"></i> Clientes
       </div>
-      <div class="nav-item" onclick="showSection('equipamentos')">
+      <div class="nav-item" data-section="equipamentos" onclick="showSection('equipamentos')">
         <i class="ph ph-cpu"></i> Equipamentos
       </div>
-      <div class="nav-item" onclick="showSection('documentos')">
+      <div class="nav-item" data-section="documentos" onclick="showSection('documentos')">
         <i class="ph ph-file-doc"></i> Documentos
       </div>
     </nav>
@@ -1228,13 +1225,13 @@ function fazerLogout() {
 // ── NAVEGAÇÃO ──
 function showSection(id) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('sec-' + id).classList.add('active');
-  const items = document.querySelectorAll('.nav-item');
-  const map = { dashboard:0, propostas:1, clientes:2, equipamentos:3, documentos:4 };
-  if (map[id] !== undefined) items[map[id]].classList.add('active');
-  if (id === 'dashboard')    carregarDashboard();
-  if (id === 'equipamentos') { carregarPaineis(); carregarInversores(); }
+  document.querySelectorAll('.nav-item[data-section]').forEach(n => n.classList.remove('active'));
+  const sec = document.getElementById('sec-' + id);
+  if(sec) sec.classList.add('active');
+  const activeNav = document.querySelector(`.nav-item[data-section="${id}"]`);
+  if(activeNav) activeNav.classList.add('active');
+  if(id === 'dashboard')    carregarDashboard();
+  if(id === 'equipamentos') { carregarPaineis(); carregarInversores(); }
 }
 
 // ── DASHBOARD ──

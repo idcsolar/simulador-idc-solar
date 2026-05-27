@@ -180,6 +180,20 @@ h1{font-family:'Fraunces',serif;font-size:28px;font-weight:700;margin-bottom:8px
       <div class="card-body">
         <div class="form-section">
           <div class="form-section-title"><i class="ph ph-user"></i> Identificação</div>
+
+          <!-- Busca cliente cadastrado -->
+          <div style="background:var(--bg);border-radius:10px;padding:14px;margin-bottom:16px;border:1px solid var(--border);position:relative;">
+            <div style="font-size:12px;font-weight:500;margin-bottom:8px;color:var(--gray-dark);">
+              <i class="ph ph-magnifying-glass"></i> Buscar cliente cadastrado
+            </div>
+            <input type="text" id="gen-busca-cliente" placeholder="Digite nome ou telefone..."
+              style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;outline:none;"
+              oninput="buscarClienteGerador(this.value)" autocomplete="off"/>
+            <div id="gen-clientes-lista"
+              style="display:none;position:absolute;left:14px;right:14px;background:white;border:1px solid var(--border);
+                     border-radius:8px;box-shadow:var(--shadow);z-index:50;max-height:200px;overflow-y:auto;"></div>
+          </div>
+
           <div class="form-grid">
             <div class="form-field"><label>Nome completo *</label><input type="text" id="cli-nome" placeholder="Nome do cliente"/></div>
             <div class="form-field"><label>CPF / CNPJ</label><input type="text" id="cli-doc" placeholder="000.000.000-00"/></div>
@@ -479,14 +493,55 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 
 async function carregarEquipamentosDB() {
   try {
-    const [rP, rI] = await Promise.all([
+    const [rP, rI, rC] = await Promise.all([
       fetch(SUPA_URL+'/rest/v1/paineis?select=*&order=marca.asc', {headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}}),
-      fetch(SUPA_URL+'/rest/v1/inversores?select=*&order=marca.asc', {headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}})
+      fetch(SUPA_URL+'/rest/v1/inversores?select=*&order=marca.asc', {headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}}),
+      fetch(SUPA_URL+'/rest/v1/clientes?select=*&order=nome.asc', {headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}})
     ]);
-    paineisDB = await rP.json() || [];
+    paineisDB    = await rP.json() || [];
     inversoresDB = await rI.json() || [];
+    clientesDB   = await rC.json() || [];
     if(setups.length) renderSetups();
   } catch(e) { console.warn('Equipamentos não carregados:', e); }
+}
+
+let clientesDB = [];
+
+function buscarClienteGerador(q) {
+  const list = document.getElementById('gen-clientes-lista');
+  if(!q || q.length < 2) { list.style.display='none'; return; }
+  const f = clientesDB.filter(c =>
+    (c.nome||'').toLowerCase().includes(q.toLowerCase()) ||
+    (c.telefone||'').includes(q)
+  ).slice(0,8);
+  if(!f.length){ list.style.display='none'; return; }
+  list.style.display='block';
+  list.innerHTML = f.map(c => `
+    <div onclick='preencherClienteGerador(${JSON.stringify(c).replace(/"/g,"&quot;")})'
+      style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #F0EDE6;font-size:13px;"
+      onmouseover="this.style.background='#FEF3E2'" onmouseout="this.style.background='white'">
+      <strong>${c.nome}</strong>
+      <span style="color:#9A9385;margin-left:8px;">${c.telefone||''}</span>
+      <span style="color:#9A9385;margin-left:8px;">${c.cidade||''}</span>
+    </div>`).join('');
+}
+
+function preencherClienteGerador(c) {
+  if(typeof c === 'string') c = JSON.parse(c);
+  const set = (id, val) => { const el=document.getElementById(id); if(el && val) el.value=val; };
+  set('cli-nome',     c.nome);
+  set('cli-fone',     c.telefone);
+  set('cli-email',    c.email);
+  set('cli-endereco', c.endereco);
+  // Cidade
+  const cidEl = document.getElementById('proj-cidade');
+  if(cidEl && c.cidade) {
+    cidEl.value = c.cidade;
+    buscarCidade(c.cidade);
+  }
+  document.getElementById('gen-busca-cliente').value = '';
+  document.getElementById('gen-clientes-lista').style.display = 'none';
+  toast('Cliente ' + c.nome + ' preenchido!');
 }
 
 // ── NAVEGAÇÃO ──
@@ -1136,16 +1191,31 @@ function renderRevisao() {
 
 // ── GERAR PROPOSTA ──
 async function gerarPropostaFinal() {
-  const nome = document.getElementById('cli-nome').value.trim();
-  if(!nome){ toast('Informe o nome do cliente.'); goStep(1); return; }
-  if(!hspSelecionado){ toast('Selecione a cidade.'); goStep(2); return; }
-  if(!setups.length){ toast('Adicione pelo menos 1 setup.'); goStep(3); return; }
+  // ── Validação obrigatória ──
+  const nome  = document.getElementById('cli-nome').value.trim();
+  const fone  = document.getElementById('cli-fone').value.trim();
+  const erros = [];
+  if(!nome)  erros.push('Nome do cliente (Etapa 1)');
+  if(!fone || fone.replace(/\D/g,'').length < 10) erros.push('WhatsApp do cliente (Etapa 1)');
+  if(!hspSelecionado) erros.push('Cidade / HSP (Etapa 2)');
+  const consumos = getConsumos();
+  if(consumos.every(v => v === 0)) erros.push('Consumo mensal (Etapa 2)');
+  if(!setups.length) erros.push('Pelo menos 1 setup (Etapa 3)');
+  const s0 = setups[0] || {};
+  if(!s0.qtdModulos || !s0.potModulo) erros.push('Quantidade e potência dos painéis (Etapa 3)');
+  if(!s0.precoFinal || s0.precoFinal <= 0) erros.push('Preço do kit (Etapa 4)');
+
+  if(erros.length) {
+    toast('Preencha os campos obrigatórios:\n• ' + erros.join('\n• '));
+    alert('Campos obrigatórios não preenchidos:\n\n• ' + erros.join('\n• '));
+    return;
+  }
 
   const btn = document.querySelector('[onclick="gerarPropostaFinal()"]');
   if(btn){ btn.disabled=true; btn.innerHTML='<i class="ph ph-spinner"></i> Gerando...'; }
 
-  const linkUnico  = 'proposta-' + Date.now();
-  const numeroSeq  = Math.floor(Date.now()/1000) % 100000;
+  const linkUnico = 'proposta-' + Date.now();
+  const numeroSeq = Math.floor(Date.now()/1000) % 100000;
   const calc = window._calc || {};
   const fin  = window._financeiro || {};
 
@@ -1188,7 +1258,7 @@ async function gerarPropostaFinal() {
     numero:            numeroSeq,
     prop_numero:       document.getElementById('prop-numero').value,
     cliente_nome:      nome,
-    cliente_fone:      document.getElementById('cli-fone').value,
+    cliente_fone:      fone,
     cliente_email:     document.getElementById('cli-email').value,
     cliente_cidade:    document.getElementById('proj-cidade').value,
     tipo_projeto:      document.getElementById('proj-categoria').value,
@@ -1208,40 +1278,47 @@ async function gerarPropostaFinal() {
   };
 
   try {
-    const token = sessionStorage.getItem('supa_token') || '';
     const r = await fetch(SUPA_URL + '/rest/v1/propostas', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'apikey':        SUPA_KEY,
-        'Authorization': token ? 'Bearer ' + token : 'Bearer ' + SUPA_KEY,
+        'Authorization': 'Bearer ' + SUPA_KEY,
         'Prefer':        'return=representation'
       },
       body: JSON.stringify(proposta)
     });
     const dados = await r.json();
     if(!r.ok) throw new Error(JSON.stringify(dados));
-    toast('Proposta salva!');
-    mostrarModalSucesso(proposta.prop_numero, linkUnico, nome, proposta.cliente_fone);
+    toast('✅ Proposta salva!');
+    mostrarModalSucesso(proposta.prop_numero, linkUnico, nome, fone);
   } catch(e) {
-    console.error('Erro:', e);
-    toast('Aviso: ' + e.message);
-    mostrarModalSucesso(proposta.prop_numero, linkUnico, nome, proposta.cliente_fone);
+    console.error('Erro ao salvar:', e);
+    toast('⚠️ Erro ao salvar — verifique o console');
+    mostrarModalSucesso(proposta.prop_numero, linkUnico, nome, fone);
   }
 
   if(btn){ btn.disabled=false; btn.innerHTML='<i class="ph ph-file-text"></i> Gerar proposta para o cliente'; }
 }
 
 function mostrarModalSucesso(numero, linkUnico, nomeCliente, fone) {
-  const url   = 'https://idcsolar.com.br/proposta?id=' + linkUnico;
-  const waMsg = encodeURIComponent('Olá ' + nomeCliente + '! Segue o link da sua proposta IDC Solar 🌞\n\n' + url + '\n\nQualquer dúvida estou à disposição!');
+  const url    = 'https://idcsolar.com.br/proposta?id=' + linkUnico;
+  const waMsg  = encodeURIComponent('Olá ' + nomeCliente + '! Segue o link da sua proposta IDC Solar 🌞\n\n' + url + '\n\nQualquer dúvida estou à disposição!');
   const waFone = fone ? '55' + fone.replace(/\D/g,'') : '';
   const waUrl  = waFone ? 'https://wa.me/' + waFone + '?text=' + waMsg : 'https://wa.me/?text=' + waMsg;
 
+  // Remove modal anterior se existir
+  const old = document.getElementById('modal-sucesso-proposta');
+  if(old) old.remove();
+
   const overlay = document.createElement('div');
+  overlay.id = 'modal-sucesso-proposta';
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)';
   overlay.innerHTML = `
-    <div style="background:white;border-radius:24px;max-width:540px;width:100%;padding:40px;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,.3);">
+    <div style="background:white;border-radius:24px;max-width:540px;width:100%;padding:40px;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,.3);position:relative;">
+      <button onclick="document.getElementById('modal-sucesso-proposta').remove()"
+        style="position:absolute;top:16px;right:16px;background:var(--bg);border:none;width:32px;height:32px;
+               border-radius:50%;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;">✕</button>
       <div style="width:72px;height:72px;background:#DCFCE7;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
         <i class="ph ph-check-circle" style="font-size:36px;color:#16a34a;"></i>
       </div>
@@ -1262,61 +1339,52 @@ function mostrarModalSucesso(numero, linkUnico, nomeCliente, fone) {
                  padding:11px 20px;border-radius:50px;font-size:14px;font-weight:600;text-decoration:none;">
           <i class="ph ph-whatsapp-logo"></i> Enviar por WhatsApp
         </a>
-        <button onclick="voltarParaPropostas()" class="btn btn-outline"><i class="ph ph-list"></i> Ver propostas</button>
-        <button onclick="novaPropostaCompleto()" class="btn btn-outline"><i class="ph ph-plus"></i> Nova proposta</button>
+        <button onclick="abrirProposta('${url}')" class="btn btn-outline">
+          <i class="ph ph-eye"></i> Visualizar
+        </button>
+        <button onclick="novaPropostaCompleto()" class="btn btn-outline">
+          <i class="ph ph-plus"></i> Nova proposta
+        </button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
-  overlay.addEventListener('click', e => { if(e.target===overlay) overlay.remove(); });
 }
 
+function abrirProposta(url) {
+  window.open(url, '_blank');
+}
 
 function copiarLink() {
   const el = document.getElementById('link-proposta');
   if(el) { el.select(); document.execCommand('copy'); toast('Link copiado!'); }
 }
 
-function voltarParaPropostas() {
-  document.querySelectorAll('[style*="position:fixed"]').forEach(el => {
-    if(el.style.zIndex >= 500) el.remove();
-  });
-  // Se estiver no admin, navega para propostas
-  if(window.parent && window.parent !== window) {
-    window.parent.postMessage('nav:propostas','*');
-  } else {
-    window.location.href = '/admin';
-  }
-}
-
 function novaPropostaCompleto() {
-  document.querySelectorAll('[style*="position:fixed"]').forEach(el => {
-    if(el.style.zIndex >= 500) el.remove();
-  });
-  // Reinicia tudo
+  const modal = document.getElementById('modal-sucesso-proposta');
+  if(modal) modal.remove();
   setups = [];
   window._calc = null;
   window._financeiro = null;
   cidadeSelecionada = null;
   hspSelecionado = null;
-  // Reset formulários
   ['cli-nome','cli-doc','cli-fone','cli-email','cli-endereco','proj-cidade'].forEach(id=>{
-    const el=document.getElementById(id); if(el) el.value='';
+    const el = document.getElementById(id); if(el) el.value = '';
   });
-  // Gera novo número
   const hoje = new Date();
-  const ano = String(hoje.getFullYear()).slice(2);
-  const seq = String(Math.floor(Math.random()*900)+100);
-  document.getElementById('prop-numero').value = `IDC.RG.${seq}.${ano}.R00`;
-  document.getElementById('prop-revisao').value = '0';
+  const ano  = String(hoje.getFullYear()).slice(2);
+  const seq  = String(Math.floor(Math.random()*900)+100);
+  const elN  = document.getElementById('prop-numero');
+  const elR  = document.getElementById('prop-revisao');
+  if(elN) elN.value = `IDC.RG.${seq}.${ano}.R00`;
+  if(elR) elR.value = '0';
   const _hspBadge = document.getElementById('hsp-badge');
   if(_hspBadge) _hspBadge.innerHTML = '<i class="ph ph-sun"></i> Selecione uma cidade';
   const _hspWrap = document.getElementById('hsp-meses-wrap');
   if(_hspWrap) _hspWrap.style.display = 'none';
   const _dimRes = document.getElementById('dimensionamento-result');
   if(_dimRes) _dimRes.style.display = 'none';
-
   goStep(1);
-  toast('Formulário limpo. Nova proposta!');
+  toast('Nova proposta!');
 }
 
 // ── UTILS ──
