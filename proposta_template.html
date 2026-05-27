@@ -1285,18 +1285,21 @@ function renderCondicoes(setupsArr) {
   const rows = [
     ['Valor à vista', s => fmtR(s.precoFinal||0)],
     ['Financiamento IDC', s => {
-      const v = s.precoFinal||0;
-      const ent = Math.round(v * 0.5);
-      const parc = Math.round((v - ent) / 3);
-      return `Ent.: ${fmtR(ent)} + 3x de ${fmtR(parc)}`;
+      const v    = s.precoFinal || 0;
+      const ent  = s._finEntrada  > 0 ? s._finEntrada  : Math.round(v * 0.5);
+      const nP   = s._finParcelas > 0 ? s._finParcelas : 3;
+      const parc = nP > 0 ? Math.round((v - ent) / nP) : 0;
+      return `Ent.: ${fmtR(ent)} + ${nP}x de ${fmtR(parc)}`;
     }],
     ['Cartão de crédito', s => {
-      const v = s.precoFinal||0;
-      const kit = (s.precoKit||v*0.7);
-      const resto = v - kit;
-      const parc21 = (kit * 1.15 / 21).toFixed(2).replace('.',',');
-      const parc6 = (resto * 1.06 / 6).toFixed(2).replace('.',',');
-      return `Equipamentos: Até 21x R$ ${parc21}<br>Mão de obra + engenharia: Até 6x R$ ${parc6}`;
+      const v       = s.precoFinal || 0;
+      const kit     = s._ccKit     > 0 ? s._ccKit     : (s.precoKit || v * 0.7);
+      const kitParc = s._ccKitParc > 0 ? s._ccKitParc : 21;
+      const svc     = s._ccSvc     > 0 ? s._ccSvc     : (v - kit);
+      const svcParc = s._ccSvcParc > 0 ? s._ccSvcParc : 6;
+      const parc21  = kitParc > 0 ? (kit * 1.15 / kitParc).toFixed(2).replace('.',',') : '—';
+      const parc6   = svcParc > 0 ? (svc * 1.06 / svcParc).toFixed(2).replace('.',',') : '—';
+      return `Equipamentos: Até ${kitParc}x R$ ${parc21}<br>Mão de obra + engenharia: Até ${svcParc}x R$ ${parc6}`;
     }]
   ];
 
