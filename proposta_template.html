@@ -1260,7 +1260,7 @@ function renderCondicoes(setupsArr) {
       const v    = s.precoFinal || 0;
       const ent  = s._finEntrada  > 0 ? s._finEntrada  : Math.round(v * 0.5);
       const nP   = s._finParcelas > 0 ? s._finParcelas : 3;
-      const parc = nP > 0 ? Math.round((v - ent) / nP) : 0;
+      const parc = nP > 0 ? (v - ent) / nP : 0;
       return `Ent.: ${fmtR(ent)} + ${nP}x de ${fmtR(parc)}`;
     }],
     ['Cartão de crédito', s => {
