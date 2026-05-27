@@ -1497,7 +1497,17 @@ async function gerarPropostaFinal() {
   const calc = window._calc || {};
   const fin  = window._financeiro || {};
 
-  // Condições já foram salvas em salvarCondicoesPagamento() ao avançar para etapa 5
+  // Garante que os valores das condições de pagamento estão salvos nos objetos setups[]
+  salvarCondicoesPagamento();
+
+  // DEBUG - remover depois de confirmar
+  console.log('🔍 setups antes de gerar:', JSON.stringify(setups.map(s => ({
+    _finEntrada: s._finEntrada,
+    _finParcelas: s._finParcelas,
+    _ccKit: s._ccKit,
+    _ccSvc: s._ccSvc
+  }))));
+
   const dadosProposta = {
     setups: setups.map(s => ({...s})),
     calc: {
