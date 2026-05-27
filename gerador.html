@@ -1548,11 +1548,26 @@ async function gerarPropostaFinal() {
           'Prefer':'return=representation'
         },
         body: JSON.stringify({
-          ...proposta,
-          id: undefined,
-          revisao:    novaRev,
-          updated_at: new Date().toISOString(),
-          status:     'Enviada'
+          // Dados atualizados — NÃO sobrescreve link_unico (mantém o link original)
+          cliente_nome:      proposta.cliente_nome,
+          cliente_fone:      proposta.cliente_fone,
+          cliente_email:     proposta.cliente_email,
+          cliente_cidade:    proposta.cliente_cidade,
+          tipo_projeto:      proposta.tipo_projeto,
+          tipo_conexao:      proposta.tipo_conexao,
+          tipo_telhado:      proposta.tipo_telhado,
+          concessionaria:    proposta.concessionaria,
+          consumo_medio:     proposta.consumo_medio,
+          potencia_kwp:      proposta.potencia_kwp,
+          valor_total:       proposta.valor_total,
+          economia_estimada: proposta.economia_estimada,
+          payback_anos:      proposta.payback_anos,
+          dados_proposta:    proposta.dados_proposta,
+          prop_numero:       proposta.prop_numero,
+          revisao:           novaRev,
+          updated_at:        new Date().toISOString(),
+          status:            'Enviada'
+          // link_unico NÃO incluído — mantém o original
         })
       });
       const dadosPatch = await rPatch.json();

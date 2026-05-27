@@ -522,6 +522,11 @@ tbody td:first-child { color: var(--black); font-weight: 500; }
       </div>
     </nav>
     <div class="sidebar-bottom">
+      <div style="padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.08); margin-bottom: 8px;display:flex;gap:8px;">
+        <div class="nav-item" onclick="refreshDados()" style="flex:1;justify-content:center;" title="Atualizar dados sem sair">
+          <i class="ph ph-arrows-clockwise"></i> Atualizar
+        </div>
+      </div>
       <div style="padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 8px;">
         <div style="font-size: 10px; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; padding: 0 14px;">Acesso rápido</div>
         <a href="https://script.google.com/macros/s/AKfycbxld97wBGdHUUjUAu_yyshHax93MO0YFNw2wEZmTXGs24LP2vPVedIaYLnP2lQjOw/exec" target="_blank" style="text-decoration:none;">
@@ -535,8 +540,13 @@ tbody td:first-child { color: var(--black); font-weight: 500; }
           </div>
         </a>
       </div>
-      <div class="nav-item" onclick="fazerLogout()">
-        <i class="ph ph-sign-out"></i> Sair
+      <div style="display:flex;gap:8px;padding:0 4px;">
+        <div class="nav-item" onclick="refreshDados()" style="flex:1;justify-content:center;">
+          <i class="ph ph-arrows-clockwise"></i> Atualizar
+        </div>
+        <div class="nav-item" onclick="fazerLogout()" style="flex:1;justify-content:center;">
+          <i class="ph ph-sign-out"></i> Sair
+        </div>
       </div>
     </div>
   </aside>
@@ -1166,7 +1176,7 @@ tbody td:first-child { color: var(--black); font-weight: 500; }
 const SUPA_URL = 'https://wvtjbnyqouugzjvwgtpj.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2dGpibnlxb3V1Z3pqdndndHBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0ODE3MjMsImV4cCI6MjA5NTA1NzcyM30.fxRrx0aNRJzFOg8xEv6-uHv7hQ4dztN0Uh-vbJc325c';
 
-let token = null;
+let token = localStorage.getItem('idc_admin_token') || null;
 let propostasCache = [];
 let equipamentosCache = [];
 
@@ -1203,6 +1213,7 @@ async function fazerLogin() {
   const data = await authApi('POST', '/token?grant_type=password', { email, password: pass });
   if (data.access_token) {
     token = data.access_token;
+    localStorage.setItem('idc_admin_token', token);
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
     carregarDashboard();
@@ -1210,7 +1221,6 @@ async function fazerLogin() {
     carregarClientes();
     carregarPaineis();
     carregarInversores();
-    carregarCRM();
   } else {
     err.textContent = 'E-mail ou senha inválidos.';
   }
@@ -1218,11 +1228,48 @@ async function fazerLogin() {
 
 function fazerLogout() {
   token = null;
+  localStorage.removeItem('idc_admin_token');
   document.getElementById('app').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
 }
 
 // ── NAVEGAÇÃO ──
+// ── RESTAURA SESSÃO ──
+async function restaurarSessao() {
+  if(!token) return false;
+  try {
+    // Verifica se o token ainda é válido
+    const r = await fetch(SUPA_URL + '/auth/v1/user', {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + token }
+    });
+    if(r.ok) {
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      carregarDashboard();
+      carregarPropostas();
+      carregarClientes();
+      carregarPaineis();
+      carregarInversores();
+      return true;
+    }
+  } catch(e) {}
+  token = null;
+  localStorage.removeItem('idc_admin_token');
+  return false;
+}
+
+function refreshDados() {
+  if(!token) { toast('Sessão expirada. Faça login novamente.'); return; }
+  carregarDashboard();
+  carregarPropostas();
+  carregarClientes();
+  toast('✅ Dados atualizados!');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  restaurarSessao();
+});
+
 function showSection(id) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-item[data-section]').forEach(n => n.classList.remove('active'));
@@ -1339,18 +1386,38 @@ function buscarPropostas(q) {
 }
 
 async function deletarProposta(id, nomeCliente) {
-  // Confirmação em duas etapas
-  const confirmou = confirm(`Deletar a proposta de "${nomeCliente}"?\n\nEsta ação não pode ser desfeita.`);
+  const confirmou = confirm('Deletar a proposta de "' + nomeCliente + '"?\n\nEsta ação não pode ser desfeita.');
   if(!confirmou) return;
-  const confirmou2 = confirm(`Tem certeza? A proposta e todos os registros de acesso serão removidos permanentemente.`);
+  const confirmou2 = confirm('Tem certeza? Todos os dados serão removidos permanentemente.');
   if(!confirmou2) return;
 
   try {
-    await api('DELETE', `/rest/v1/propostas?id=eq.${id}`);
-    toast('Proposta deletada.');
+    // Deleta registros dependentes primeiro (FK cascade pode não estar ativo)
+    try { await api('DELETE', `/rest/v1/proposta_acessos?proposta_id=eq.${id}`); } catch(e){ console.warn('acessos:', e); }
+    try { await api('DELETE', `/rest/v1/revisoes?proposta_id=eq.${id}`); }        catch(e){ console.warn('revisoes:', e); }
+    try { await api('DELETE', `/rest/v1/documentos?proposta_id=eq.${id}`); }      catch(e){ console.warn('docs:', e); }
+
+    const r = await fetch(SUPA_URL + '/rest/v1/propostas?id=eq.' + id, {
+      method: 'DELETE',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + token,
+        'Prefer': 'return=representation'
+      }
+    });
+
+    if(!r.ok) {
+      const err = await r.json();
+      throw new Error(err?.message || err?.hint || JSON.stringify(err));
+    }
+
+    toast('✅ Proposta deletada.');
     carregarPropostas();
+    carregarDashboard();
   } catch(e) {
-    toast('Erro ao deletar: ' + e.message);
+    console.error('Erro ao deletar:', e);
+    toast('❌ Erro ao deletar: ' + e.message);
+    alert('Não foi possível deletar a proposta.\n\nErro: ' + e.message + '\n\nVerifique as políticas RLS no Supabase.');
   }
 }
 
