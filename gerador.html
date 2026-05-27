@@ -193,11 +193,20 @@ h1{font-family:'Fraunces',serif;font-size:28px;font-weight:700;margin-bottom:8px
           <div class="form-grid">
             <div class="form-field">
               <label>Concessionária</label>
-              <select id="proj-concessionaria">
-                <option>CPFL Paulista</option><option>CPFL Piratininga</option>
-                <option>Elektro</option><option>EDP São Paulo</option>
-                <option>Enel SP</option><option>CESP</option><option>Outra</option>
+              <select id="proj-concessionaria" onchange="verificarOutraConcessionaria(this)">
+                <option>CPFL Paulista</option>
+                <option>CPFL Piratininga</option>
+                <option>CPFL Santa Cruz</option>
+                <option>Elektro</option>
+                <option>EDP São Paulo</option>
+                <option>Enel SP</option>
+                <option>CESP</option>
+                <option value="__outra__">+ Outra (digitar)</option>
               </select>
+              <input type="text" id="proj-concessionaria-outra"
+                placeholder="Digite o nome da concessionária"
+                style="display:none;margin-top:6px;"
+                oninput="this.dataset.custom=this.value"/>
             </div>
             <div class="form-field">
               <label>Tipo de conexão</label>
@@ -1185,7 +1194,7 @@ async function gerarPropostaFinal() {
     tipo_projeto:      document.getElementById('proj-categoria').value,
     tipo_conexao:      document.getElementById('proj-conexao').value,
     tipo_telhado:      document.getElementById('proj-telhado').value,
-    concessionaria:    document.getElementById('proj-concessionaria').value,
+    concessionaria:    getConcessionaria(),
     consumo_medio:     calc.media        || 0,
     potencia_kwp:      setups[0]?.kwpCalculado || calc.kwp || 0,
     valor_total:       setups[0]?.precoFinal   || 0,
@@ -1328,6 +1337,24 @@ function toast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'), 3000);
+}
+
+function verificarOutraConcessionaria(sel) {
+  const outro = document.getElementById('proj-concessionaria-outra');
+  if(sel.value === '__outra__') {
+    outro.style.display = 'block';
+    outro.focus();
+  } else {
+    outro.style.display = 'none';
+  }
+}
+
+function getConcessionaria() {
+  const sel = document.getElementById('proj-concessionaria');
+  if(sel.value === '__outra__') {
+    return document.getElementById('proj-concessionaria-outra').value.trim() || 'Outra';
+  }
+  return sel.value;
 }
 
 // ── INICIALIZAÇÃO ──
