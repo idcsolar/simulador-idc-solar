@@ -1114,62 +1114,6 @@ function renderChartFluxo(fluxos, fcl, payback) {
         legend: { labels: { color: 'rgba(255,255,255,.6)', font: { size: 11 } } },
         tooltip: {
           callbacks: {
-            label: ctx => ' ' + ctx.dataset.label + ': R$ ' + ctx.parsed.y.toLocaleString('pt-BR')
-          }
-        }
-      },
-      scales: {
-        x: {
-          ticks: { color: 'rgba(255,255,255,.4)', font: { size: 10 } },
-          grid:  { color: 'rgba(255,255,255,.04)' }
-        },
-        y: {
-          ticks: {
-            color: 'rgba(255,255,255,.4)', font: { size: 10 },
-            callback: v => 'R$ ' + (v/1000).toFixed(0) + 'k'
-          },
-          grid: { color: 'rgba(255,255,255,.06)' }
-        }
-      }
-    }
-  });
-
-  // Caixa de informações acima do gráfico (igual ao original)
-  const wrapper = ctx.canvas.parentElement;
-  const old = wrapper.querySelector('.chart-info-box');
-  if(old) old.remove();
-  const P = PROPOSTA;
-  const fin = P.financeiro || {};
-  const inv = P.setups?.[0]?.precoFinal || 0;
-  const ger25 = (P.geracao_media||0)*12*25;
-  const custoSolar = inv > 0 && ger25 > 0 ? (inv/ger25).toFixed(2).replace('.',',') : '—';
-
-  const info = document.createElement('div');
-  info.className = 'chart-info-box';
-  info.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;';
-  info.innerHTML = `
-    <div style="background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:6px 12px;font-size:12px;color:white;">
-      TIR: <strong style="color:#4ade80;">${fin.tir ? (fin.tir*100).toFixed(2)+'%' : '—'}</strong>
-    </div>
-    <div style="background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:6px 12px;font-size:12px;color:white;">
-      Custo atual da energia: <strong>R$ ${(P.tarifa||0.90).toFixed(2).replace('.',',')}</strong>
-    </div>
-    <div style="background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:6px 12px;font-size:12px;color:white;">
-      Custo da energia solar: <strong>R$ ${custoSolar}</strong>
-    </div>
-    <div style="background:rgba(0,0,0,.5);border:1px solid rgba(34,197,94,.4);border-radius:6px;padding:6px 12px;font-size:12px;color:white;">
-      Retorno do investimento: <strong style="color:#4ade80;">${fin.payback||'—'} anos</strong>
-    </div>`;
-  wrapper.insertBefore(info, ctx.canvas);
-}
-    },
-    options: {
-      responsive: true,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: { labels: { color: 'rgba(255,255,255,.6)', font: { size: 11 } } },
-        tooltip: {
-          callbacks: {
             label: ctx => {
               const v = ctx.parsed.y;
               const sign = v >= 0 ? '' : '-';
@@ -1202,6 +1146,34 @@ function renderChartFluxo(fluxos, fcl, payback) {
       }
     }
   });
+
+  // Caixa de informações acima do gráfico
+  const wrapper = ctx.canvas.parentElement;
+  const old = wrapper.querySelector('.chart-info-box');
+  if(old) old.remove();
+  const P = PROPOSTA;
+  const fin = P.financeiro || {};
+  const inv = P.setups?.[0]?.precoFinal || 0;
+  const ger25 = (P.geracao_media||0)*12*25;
+  const custoSolar = inv > 0 && ger25 > 0 ? (inv/ger25).toFixed(2).replace('.',',') : '—';
+
+  const info = document.createElement('div');
+  info.className = 'chart-info-box';
+  info.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;';
+  info.innerHTML = `
+    <div style="background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:6px 12px;font-size:12px;color:white;">
+      TIR: <strong style="color:#4ade80;">${fin.tir ? (fin.tir*100).toFixed(2)+'%' : '—'}</strong>
+    </div>
+    <div style="background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:6px 12px;font-size:12px;color:white;">
+      Custo atual da energia: <strong>R$ ${(P.tarifa||0.90).toFixed(2).replace('.',',')}</strong>
+    </div>
+    <div style="background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:6px 12px;font-size:12px;color:white;">
+      Custo da energia solar: <strong>R$ ${custoSolar}</strong>
+    </div>
+    <div style="background:rgba(0,0,0,.5);border:1px solid rgba(34,197,94,.4);border-radius:6px;padding:6px 12px;font-size:12px;color:white;">
+      Retorno do investimento: <strong style="color:#4ade80;">${fin.payback||'—'} anos</strong>
+    </div>`;
+  wrapper.insertBefore(info, ctx.canvas);
 }
 
 function renderSetups(setupsArr) {
