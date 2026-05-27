@@ -1549,16 +1549,35 @@ async function gerarPropostaFinal() {
       const revAtual = window._editandoRevisaoAtual || 0;
       const novaRev  = revAtual + 1;
 
-      // Salva snapshot da revisão atual em revisoes
+      // Salva snapshot da versão ANTERIOR (antes das mudanças)
+      // Busca do banco para garantir dados completos
       try {
+        const rSnap = await fetch(
+          SUPA_URL + '/rest/v1/propostas?id=eq.' + window._editandoPropostaId + '&select=*&limit=1',
+          { headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY } }
+        );
+        const snapRows = await rSnap.json();
+        const snapAtual = snapRows?.[0] || {};
+
         await fetch(SUPA_URL + '/rest/v1/revisoes', {
           method: 'POST',
           headers: {'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY},
           body: JSON.stringify({
             proposta_id:    window._editandoPropostaId,
             numero_revisao: revAtual,
-            motivo:         'Rev. ' + novaRev + ' em ' + new Date().toLocaleDateString('pt-BR'),
-            dados_snapshot: JSON.stringify(dadosProposta)
+            motivo:         'Substituída pela Rev. ' + novaRev + ' em ' + new Date().toLocaleDateString('pt-BR'),
+            dados_snapshot: JSON.stringify({
+              potencia_kwp:  snapAtual.potencia_kwp,
+              valor_total:   snapAtual.valor_total,
+              payback_anos:  snapAtual.payback_anos,
+              tipo_telhado:  snapAtual.tipo_telhado,
+              concessionaria:snapAtual.concessionaria,
+              tipo_conexao:  snapAtual.tipo_conexao,
+              status:        snapAtual.status,
+              prop_numero:   snapAtual.prop_numero,
+              revisao:       snapAtual.revisao,
+              dados_proposta: snapAtual.dados_proposta
+            })
           })
         });
       } catch(e) { console.warn('Snapshot não salvo:', e); }

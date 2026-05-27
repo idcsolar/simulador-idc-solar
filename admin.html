@@ -1589,14 +1589,17 @@ async function verHistoricoRevisoes(id) {
           ${revisoes.map(r => {
             let snap = {};
             try { snap = JSON.parse(r.dados_snapshot||'{}'); } catch(e){}
-            // Detecta mudanças entre snapshot e versão atual
+            const kwp     = snap.potencia_kwp || snap.kwp || '—';
+            const valor   = snap.valor_total  || snap.valor || null;
+            const payback = snap.payback_anos || snap.payback || '—';
+            const telhado = snap.tipo_telhado || '';
+            const concess = snap.concessionaria || '';
+
             const mudancas = [];
-            if(snap.valor_total && snap.valor_total !== p.valor_total)
-              mudancas.push(`Valor: ${fmtMoeda(snap.valor_total)} → ${fmtMoeda(p.valor_total)}`);
-            if(snap.potencia_kwp && snap.potencia_kwp !== p.potencia_kwp)
-              mudancas.push(`kWp: ${snap.potencia_kwp} → ${p.potencia_kwp}`);
-            if(snap.tipo_telhado && snap.tipo_telhado !== p.tipo_telhado)
-              mudancas.push(`Telhado: ${snap.tipo_telhado} → ${p.tipo_telhado}`);
+            if(valor   && valor   !== p.valor_total)   mudancas.push(`Valor: ${fmtMoeda(valor)} → ${fmtMoeda(p.valor_total)}`);
+            if(kwp     && kwp     !== '—' && parseFloat(kwp) !== p.potencia_kwp) mudancas.push(`kWp: ${kwp} → ${p.potencia_kwp}`);
+            if(telhado && telhado !== p.tipo_telhado)   mudancas.push(`Telhado: ${telhado} → ${p.tipo_telhado}`);
+            if(concess && concess !== p.concessionaria) mudancas.push(`Concess.: ${concess} → ${p.concessionaria}`);
 
             return `
             <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;">
@@ -1605,10 +1608,11 @@ async function verHistoricoRevisoes(id) {
                 <span style="font-size:12px;color:var(--gray);">${fmtData(r.created_at)}</span>
               </div>
               <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:13px;margin-bottom:8px;">
-                <div><span style="color:var(--gray);">kWp:</span> <strong>${snap.potencia_kwp||'—'}</strong></div>
-                <div><span style="color:var(--gray);">Valor:</span> <strong>${fmtMoeda(snap.valor_total)}</strong></div>
-                <div><span style="color:var(--gray);">Payback:</span> <strong>${snap.payback_anos ? snap.payback_anos+' anos' : '—'}</strong></div>
+                <div><span style="color:var(--gray);">kWp:</span> <strong>${kwp}</strong></div>
+                <div><span style="color:var(--gray);">Valor:</span> <strong>${valor ? fmtMoeda(valor) : '—'}</strong></div>
+                <div><span style="color:var(--gray);">Payback:</span> <strong>${payback !== '—' ? payback + ' anos' : '—'}</strong></div>
               </div>
+              ${telhado || concess ? `<div style="font-size:12px;color:var(--gray);margin-bottom:6px;">${[telhado,concess].filter(Boolean).join(' · ')}</div>` : ''}
               ${r.motivo ? `<div style="font-size:12px;color:var(--gray-dark);margin-bottom:6px;"><i class="ph ph-note"></i> ${r.motivo}</div>` : ''}
               ${mudancas.length ? `
               <div style="font-size:11px;color:var(--orange-dark);background:var(--orange-light);border-radius:6px;padding:6px 10px;">
