@@ -586,10 +586,19 @@ function buscarCidade(q) {
   const list = document.getElementById('cidade-list');
   if(!q || q.length < 2) { list.style.display='none'; return; }
   const termos = q.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  const matches = HSP_DATA.filter(c => {
-    const nome = c.n.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-    return nome.includes(termos);
-  }).slice(0,10);
+  const matches = HSP_DATA
+    .filter(c => {
+      const nome = c.n.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      return nome.includes(termos);
+    })
+    .sort((a, b) => {
+      const na = a.n.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      const nb = b.n.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      const aExato = na === termos ? -2 : na.startsWith(termos) ? -1 : 0;
+      const bExato = nb === termos ? -2 : nb.startsWith(termos) ? -1 : 0;
+      return aExato - bExato;
+    })
+    .slice(0, 12);
   if(!matches.length){ list.style.display='none'; return; }
   list.style.display='block';
   list.innerHTML = matches.map(c => `
@@ -1499,15 +1508,6 @@ async function gerarPropostaFinal() {
 
   // Garante que os valores das condições de pagamento estão salvos nos objetos setups[]
   salvarCondicoesPagamento();
-
-  // DEBUG - remover depois de confirmar
-  console.log('🔍 setups antes de gerar:', JSON.stringify(setups.map(s => ({
-    _finEntrada: s._finEntrada,
-    _finParcelas: s._finParcelas,
-    _ccKit: s._ccKit,
-    _ccSvc: s._ccSvc
-  }))));
-
   const dadosProposta = {
     setups: setups.map(s => ({...s})),
     calc: {
