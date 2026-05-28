@@ -823,12 +823,12 @@ const CONFIG = {
 
   // Parceiros — name, url (deixe url em branco para não ser clicável)
   parceiros: [
-    { name: 'EDMOND appsolar',          url: 'https://edmond.com.br' },
-    { name: 'Santander',                url: 'https://santander.com.br' },
-    { name: 'Amara NZero',              url: 'https://amaranzero.com' },
-    { name: 'Meu Financiamento Solar',  url: 'https://meufinanciamentosolar.com.br' },
-    { name: 'GENYX Solar Power',        url: 'https://genyx.com.br' },
-    { name: 'BTG Pactual',              url: 'https://btgpactual.com' },
+    { name: 'Amara NZero',   url: 'https://amaranzero.com.br',       logo: 'https://logo.clearbit.com/amaranzero.com.br' },
+    { name: 'Belenergy',     url: 'https://belenergy.com.br',        logo: 'https://logo.clearbit.com/belenergy.com.br' },
+    { name: 'Canal Solar',   url: 'https://canalsolar.com.br',       logo: 'https://logo.clearbit.com/canalsolar.com.br' },
+    { name: 'BTG Pactual',   url: 'https://btgpactual.com',          logo: 'https://logo.clearbit.com/btgpactual.com' },
+    { name: 'Sicoob',        url: 'https://sicoob.com.br',           logo: 'https://logo.clearbit.com/sicoob.com.br' },
+    { name: 'BV Financeira', url: 'https://bv.com.br',               logo: 'https://logo.clearbit.com/bv.com.br' },
   ],
 
   // Vídeos por tipo de telhado (deixe url: '' para não mostrar link)
@@ -1067,16 +1067,23 @@ function renderChartFluxo(fluxos, fcl, payback) {
     'rgba(232,146,10,.85)'
   );
 
-  // FCL acumulado: vermelho escuro quando negativo, verde quando positivo
-  const bgFCL = fcl.map(v => v < 0 ? 'rgba(185,28,28,.5)' : 'rgba(134,239,172,.75)');
-
-  // Destaca borda no ano do payback
+  // Linha FCL acumulado com marcador especial no ponto zero
   const paybackAno = payback ? Math.ceil(payback) : null;
-  const borderFCL  = fcl.map((_,i) => i === paybackAno ? '#16a34a' : 'transparent');
-  const borderW    = fcl.map((_,i) => i === paybackAno ? 2 : 0);
-
-  // Valor final destacado
-  const valorFinal = fcl[fcl.length-1];
+  const fclData = fcl.map(v => Math.round(v));
+  const pointRadius = fclData.map((v, i) => {
+    if (i === 0) return 3;
+    const prev = fclData[i - 1];
+    if (prev < 0 && v >= 0) return 8; // marcador grande no cruzamento do zero
+    return 3;
+  });
+  const pointBg = fclData.map((v, i) => {
+    const prev = i > 0 ? fclData[i - 1] : v;
+    return (prev < 0 && v >= 0) ? '#ffffff' : '#4ade80';
+  });
+  const pointBorder = fclData.map((v, i) => {
+    const prev = i > 0 ? fclData[i - 1] : v;
+    return (prev < 0 && v >= 0) ? '#16a34a' : '#4ade80';
+  });
 
   new Chart(ctx, {
     type: 'bar',
@@ -1089,21 +1096,24 @@ function renderChartFluxo(fluxos, fcl, payback) {
           backgroundColor: bgFluxo,
           borderRadius: 2,
           yAxisID: 'y',
-          order: 1,
-          barPercentage: 0.5,
-          categoryPercentage: 0.7
+          order: 2,
+          barPercentage: 0.6,
+          categoryPercentage: 0.75
         },
         {
           label: 'FCL Acumulado*',
-          data: fcl.map(v => Math.round(v)),
-          backgroundColor: bgFCL,
-          borderColor: borderFCL,
-          borderWidth: borderW,
-          borderRadius: 2,
-          yAxisID: 'y',
-          order: 2,
-          barPercentage: 0.5,
-          categoryPercentage: 0.7
+          type: 'line',
+          data: fclData,
+          borderColor: '#4ade80',
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          tension: 0.3,
+          pointRadius: pointRadius,
+          pointBackgroundColor: pointBg,
+          pointBorderColor: pointBorder,
+          pointBorderWidth: 2,
+          yAxisID: 'y2',
+          order: 1
         }
       ]
     },
@@ -1130,7 +1140,7 @@ function renderChartFluxo(fluxos, fcl, payback) {
         y: {
           position: 'left',
           ticks: {
-            color: 'rgba(232,146,10,.6)', font: { size: 10 },
+            color: 'rgba(232,146,10,.7)', font: { size: 10 },
             callback: v => 'R$ ' + (v/1000).toFixed(0) + 'k'
           },
           grid: { color: 'rgba(255,255,255,.04)' }
@@ -1138,7 +1148,7 @@ function renderChartFluxo(fluxos, fcl, payback) {
         y2: {
           position: 'right',
           ticks: {
-            color: 'rgba(34,197,94,.6)', font: { size: 10 },
+            color: 'rgba(74,222,128,.7)', font: { size: 10 },
             callback: v => 'R$ ' + (v/1000).toFixed(0) + 'k'
           },
           grid: { display: false }
@@ -1147,7 +1157,7 @@ function renderChartFluxo(fluxos, fcl, payback) {
     }
   });
 
-  // Caixa de informações acima do gráfico
+  // Caixa de informações acima do gráfico (igual ao original)
   const wrapper = ctx.canvas.parentElement;
   const old = wrapper.querySelector('.chart-info-box');
   if(old) old.remove();
@@ -1269,9 +1279,9 @@ function renderCondicoes(setupsArr) {
       const kitParc = s._ccKitParc > 0 ? s._ccKitParc : 21;
       const svc     = s._ccSvc     > 0 ? s._ccSvc     : (v - kit);
       const svcParc = s._ccSvcParc > 0 ? s._ccSvcParc : 6;
-      const parc21  = kitParc > 0 ? (kit * 1.15 / kitParc).toFixed(2).replace('.',',') : '—';
-      const parc6   = svcParc > 0 ? (svc * 1.06 / svcParc).toFixed(2).replace('.',',') : '—';
-      return `Equipamentos: Até ${kitParc}x R$ ${parc21}<br>Mão de obra + engenharia: Até ${svcParc}x R$ ${parc6}`;
+      const parcKit = kitParc > 0 ? kit / kitParc : 0;
+      const parcSvc = svcParc > 0 ? svc / svcParc : 0;
+      return `Equipamentos: Até ${kitParc}x ${fmtR(parcKit)}<br>Mão de obra + engenharia: Até ${svcParc}x ${fmtR(parcSvc)}`;
     }]
   ];
 
@@ -1498,8 +1508,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   const pgrid = document.getElementById('parceiros-grid');
   if(pgrid) {
     pgrid.innerHTML = CONFIG.parceiros.map(p =>
-      `<a class="parceiro-card" ${p.url ? `href="${p.url}" target="_blank"` : ''}>
-        <span>${p.name}</span>
+      `<a class="parceiro-card" ${p.url ? `href="${p.url}" target="_blank"` : ''} title="${p.name}">
+        ${p.logo
+          ? `<img src="${p.logo}" alt="${p.name}" style="max-height:36px;max-width:120px;object-fit:contain;" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">`
+          : ''}
+        <span style="${p.logo ? 'display:none' : ''}">${p.name}</span>
       </a>`
     ).join('');
   }
