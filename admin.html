@@ -1122,7 +1122,7 @@ tbody td:first-child { color: var(--black); font-weight: 500; }
 </div>
 
 <!-- SEÇÃO VENDEDORES -->
-<section id="sec-vendedores" class="section" style="display:none">
+<section id="sec-vendedores" class="section">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
     <div>
       <h2 style="margin:0;font-size:20px;">Vendedores</h2>
@@ -1559,14 +1559,7 @@ function verAcessos(propostaId) {
   document.body.appendChild(overlay);
 }
 
-function buscarPropostas(q) {
-  if (!q) { renderTabelaPropostas(propostasCache); return; }
-  const f = propostasCache.filter(p =>
-    (p.cliente_nome||'').toLowerCase().includes(q.toLowerCase()) ||
-    String(p.numero).includes(q)
-  );
-  renderTabelaPropostas(f);
-}
+// buscarPropostas está definida acima (com filtro por vendedor)
 
 let editandoPropostaId = null;
 
@@ -3171,13 +3164,19 @@ function genToast(msg) {
 
 // ── INICIALIZAÇÃO ──
 document.addEventListener('DOMContentLoaded', ()=>{
-  const hoje = new Date();
-  document.getElementById('prop-data').value = hoje.toISOString().split('T')[0];
-  const ano = String(hoje.getFullYear()).slice(2);
-  const seq = String(Math.floor(Math.random()*900)+100);
-  document.getElementById('prop-numero').value = `IDC.RG.${seq}.${ano}.R00`;
-  adicionarSetup();
-  genCarregarEquipamentosDB();
+  // ── Inicialização do gerador embutido (só roda se os elementos existirem no DOM) ──
+  // Esses IDs pertencem ao gerador.html; quando o gerador está em iframe, não existem aqui.
+  const elData   = document.getElementById('prop-data');
+  const elNumero = document.getElementById('prop-numero');
+  if (elData && elNumero) {
+    const hoje = new Date();
+    elData.value = hoje.toISOString().split('T')[0];
+    const ano = String(hoje.getFullYear()).slice(2);
+    const seq = String(Math.floor(Math.random()*900)+100);
+    elNumero.value = `IDC.RG.${seq}.${ano}.R00`;
+    if (typeof adicionarSetup === 'function')        adicionarSetup();
+    if (typeof genCarregarEquipamentosDB === 'function') genCarregarEquipamentosDB();
+  }
 });
 
 // ── VENDEDORES ──
@@ -3252,16 +3251,16 @@ async function deletarVendedor(id, nome) {
 }
 
 // ── SEÇÃO VENDEDORES ──
+// ── Extensão do showSection para carregar dados por seção ──
+// A exibição é controlada pelo CSS (.section / .section.active),
+// aqui apenas disparamos o carregamento de dados específicos de cada seção.
 const _showSectionOrig = showSection;
 function showSection(id) {
   _showSectionOrig(id);
-  if (id === 'vendedores') {
-    document.getElementById('sec-vendedores').style.display = 'block';
-    renderTabelaVendedores();
-  } else {
-    const sv = document.getElementById('sec-vendedores');
-    if (sv) sv.style.display = 'none';
-  }
+  if (id === 'vendedores') carregarVendedores();
+  if (id === 'propostas')  carregarPropostas();
+  if (id === 'clientes')   carregarClientes();
+  if (id === 'crm')        carregarCRM();
 }
 
 // ── CEP / ENDEREÇO CLIENTE ──
