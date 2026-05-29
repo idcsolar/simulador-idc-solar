@@ -520,6 +520,9 @@ tbody td:first-child { color: var(--black); font-weight: 500; }
       <div class="nav-item" data-section="documentos" onclick="showSection('documentos')">
         <i class="ph ph-file-doc"></i> Documentos
       </div>
+      <div class="nav-item" data-section="vendedores" onclick="showSection('vendedores')">
+        <i class="ph ph-user-circle"></i> Vendedores
+      </div>
     </nav>
     <div class="sidebar-bottom">
       <div style="padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.08); margin-bottom: 8px;display:flex;gap:8px;">
@@ -632,7 +635,10 @@ tbody td:first-child { color: var(--black); font-weight: 500; }
       <div class="card">
         <div class="card-header">
           <span class="card-title">Todas as propostas</span>
-          <input type="text" placeholder="Buscar..." style="padding:7px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;outline:none;font-family:inherit;" oninput="buscarPropostas(this.value)"/>
+          <input type="text" id="busca-proposta-input" placeholder="Buscar..." style="padding:7px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;outline:none;font-family:inherit;" oninput="buscarPropostas(this.value)"/>
+          <select id="filtro-vendedor" onchange="buscarPropostas(document.getElementById('busca-proposta-input').value)" style="padding:7px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;outline:none;font-family:inherit;background:white;">
+            <option value="">Todos os vendedores</option>
+          </select>
         </div>
         <div class="table-wrap">
           <table>
@@ -1115,6 +1121,25 @@ tbody td:first-child { color: var(--black); font-weight: 500; }
   </div>
 </div>
 
+<!-- SEÇÃO VENDEDORES -->
+<section id="sec-vendedores" class="section" style="display:none">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+    <div>
+      <h2 style="margin:0;font-size:20px;">Vendedores</h2>
+      <p style="margin:4px 0 0;color:var(--gray);font-size:13px;">Cadastro de vendedores</p>
+    </div>
+    <button class="btn btn-primary" onclick="abrirModalVendedor()">
+      <i class="ph ph-plus"></i> Novo vendedor
+    </button>
+  </div>
+  <div class="card">
+    <table class="tabela-propostas" id="tabela-vendedores">
+      <thead><tr><th>Nome</th><th>Telefone</th><th>E-mail</th><th>Propostas</th><th>Ações</th></tr></thead>
+      <tbody id="tbody-vendedores"><tr><td colspan="5" style="text-align:center;color:var(--gray);">Carregando...</td></tr></tbody>
+    </table>
+  </div>
+</section>
+
 <!-- MODAL CLIENTE -->
 <div class="modal-overlay" id="modal-cliente">
   <div class="modal" style="max-width:480px;">
@@ -1128,13 +1153,62 @@ tbody td:first-child { color: var(--black); font-weight: 500; }
         <div class="form-field full"><label>Nome *</label><input type="text" id="c-nome" placeholder="Nome completo"/></div>
         <div class="form-field"><label>Telefone</label><input type="tel" id="c-fone" placeholder="(00) 00000-0000" maxlength="15" oninput="mascaraTel(this)"/></div>
         <div class="form-field"><label>E-mail</label><input type="email" id="c-email" placeholder="email@cliente.com"/></div>
-        <div class="form-field"><label>Cidade</label><input type="text" id="c-cidade" placeholder="Cidade/SP"/></div>
         <div class="form-field"><label>Tipo</label><select id="c-tipo"><option>Residencial</option><option>Comercial</option><option>Industrial</option><option>Rural</option></select></div>
+        <div class="form-field" style="display:flex;gap:8px;align-items:flex-end;">
+          <div style="flex:0 0 130px;">
+            <label>CEP</label>
+            <input type="text" id="c-cep" placeholder="00000-000" maxlength="9" oninput="mascaraCEP(this)" onblur="buscarCEP()"/>
+          </div>
+          <button type="button" class="btn btn-outline btn-sm" onclick="buscarCEP()" style="margin-bottom:1px;white-space:nowrap;">
+            <i class="ph ph-magnifying-glass"></i> Buscar
+          </button>
+        </div>
+        <div class="form-field"><label>Rua / Avenida</label><input type="text" id="c-rua" placeholder="Nome da rua"/></div>
+        <div class="form-field" style="display:flex;gap:8px;">
+          <div style="flex:0 0 90px;"><label>Número</label><input type="text" id="c-numero" placeholder="123"/></div>
+          <div style="flex:1;"><label>Complemento</label><input type="text" id="c-complemento" placeholder="Apto, bloco..."/></div>
+        </div>
+        <div class="form-field"><label>Bairro</label><input type="text" id="c-bairro" placeholder="Bairro"/></div>
+        <div class="form-field"><label>Cidade</label><input type="text" id="c-cidade" placeholder="Cidade"/></div>
+        <div class="form-field"><label>Estado</label>
+          <select id="c-estado">
+            <option value="">UF</option>
+            <option>AC</option><option>AL</option><option>AP</option><option>AM</option>
+            <option>BA</option><option>CE</option><option>DF</option><option>ES</option>
+            <option>GO</option><option>MA</option><option>MT</option><option>MS</option>
+            <option>MG</option><option>PA</option><option>PB</option><option>PR</option>
+            <option>PE</option><option>PI</option><option>RJ</option><option>RN</option>
+            <option>RS</option><option>RO</option><option>RR</option><option>SC</option>
+            <option selected>SP</option><option>SE</option><option>TO</option>
+          </select>
+        </div>
       </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="fecharModal('modal-cliente')">Cancelar</button>
       <button class="btn btn-primary" onclick="salvarCliente()"><i class="ph ph-floppy-disk"></i> Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL VENDEDOR -->
+<div class="modal-overlay" id="modal-vendedor">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header">
+      <h3>Novo vendedor</h3>
+      <button class="modal-close" onclick="fecharModal('modal-vendedor')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="v-id"/>
+      <div class="form-grid">
+        <div class="form-field full"><label>Nome *</label><input type="text" id="v-nome" placeholder="Nome do vendedor"/></div>
+        <div class="form-field"><label>Telefone</label><input type="tel" id="v-fone" placeholder="(00) 00000-0000" maxlength="15" oninput="mascaraTel(this)"/></div>
+        <div class="form-field"><label>E-mail</label><input type="email" id="v-email" placeholder="vendedor@email.com"/></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="fecharModal('modal-vendedor')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarVendedor()"><i class="ph ph-floppy-disk"></i> Salvar</button>
     </div>
   </div>
 </div>
@@ -1250,6 +1324,7 @@ async function restaurarSessao() {
       carregarClientes();
       carregarPaineis();
       carregarInversores();
+      carregarVendedores();
       return true;
     }
   } catch(e) {}
@@ -1377,11 +1452,16 @@ function renderTabelaPropostas(list) {
 }
 
 function buscarPropostas(q) {
-  if (!q) { renderTabelaPropostas(propostasCache); return; }
-  const f = propostasCache.filter(p =>
+  const vendedorId = document.getElementById('filtro-vendedor')?.value || '';
+  let f = propostasCache;
+  if (q) f = f.filter(p =>
     (p.cliente_nome||'').toLowerCase().includes(q.toLowerCase()) ||
     String(p.numero||'').includes(q)
   );
+  if (vendedorId) f = f.filter(p => {
+    const vId = p.dados_proposta?.vendedor_id || p.vendedor_id;
+    return vId === vendedorId;
+  });
   renderTabelaPropostas(f);
 }
 
@@ -1747,6 +1827,12 @@ function abrirModalCliente(clienteId) {
   document.getElementById('c-cidade').value= editando?.cidade || '';
   document.getElementById('c-tipo').value  = editando?.tipo_cliente || 'Residencial';
   document.getElementById('c-id').value    = editando?.id || '';
+  document.getElementById('c-cep').value          = editando?.cep || '';
+  document.getElementById('c-rua').value          = editando?.rua || '';
+  document.getElementById('c-numero').value       = editando?.numero || '';
+  document.getElementById('c-complemento').value  = editando?.complemento || '';
+  document.getElementById('c-bairro').value       = editando?.bairro || '';
+  document.getElementById('c-estado').value       = editando?.estado || 'SP';
   document.querySelector('#modal-cliente .modal-header h3').textContent = editando ? 'Editar cliente' : 'Novo cliente';
   document.getElementById('modal-cliente').classList.add('open');
 }
@@ -1761,12 +1847,24 @@ async function salvarCliente() {
   const nome = document.getElementById('c-nome').value.trim();
   const id   = document.getElementById('c-id').value;
   if (!nome) { toast('Informe o nome.'); return; }
+  const num  = document.getElementById('c-numero')?.value.trim();
+  const comp = document.getElementById('c-complemento')?.value.trim();
+  const rua  = document.getElementById('c-rua')?.value.trim();
+  const bairro = document.getElementById('c-bairro')?.value.trim();
+  const cidade = document.getElementById('c-cidade')?.value.trim();
+  const estado = document.getElementById('c-estado')?.value.trim();
+  const cep    = document.getElementById('c-cep')?.value.trim();
+  // Montar endereço completo para o gerador
+  const partes = [rua && num ? `${rua}, ${num}` : rua, comp, bairro, cidade && estado ? `${cidade}/${estado}` : cidade].filter(Boolean);
+  const enderecoCompleto = partes.join(' - ');
   const dados = {
     nome,
     telefone:     document.getElementById('c-fone').value,
     email:        document.getElementById('c-email').value,
-    cidade:       document.getElementById('c-cidade').value,
-    tipo_cliente: document.getElementById('c-tipo').value
+    cidade:       cidade,
+    tipo_cliente: document.getElementById('c-tipo').value,
+    cep, rua, numero: num, complemento: comp, bairro, estado,
+    endereco: enderecoCompleto
   };
   try {
     if (id) {
@@ -3081,6 +3179,116 @@ document.addEventListener('DOMContentLoaded', ()=>{
   adicionarSetup();
   genCarregarEquipamentosDB();
 });
+
+// ── VENDEDORES ──
+let vendedoresCache = [];
+
+async function carregarVendedores() {
+  try {
+    vendedoresCache = await api('GET', '/rest/v1/vendedores?select=*&order=nome.asc') || [];
+    renderTabelaVendedores();
+    popularFiltroVendedor();
+  } catch(e) { console.warn('Vendedores:', e); }
+}
+
+function renderTabelaVendedores() {
+  const tbody = document.getElementById('tbody-vendedores');
+  if (!tbody) return;
+  if (!vendedoresCache.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--gray);">Nenhum vendedor cadastrado.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = vendedoresCache.map(v => {
+    const total = propostasCache.filter(p => (p.dados_proposta?.vendedor_id || p.vendedor_id) === v.id).length;
+    return `<tr>
+      <td><strong>${v.nome}</strong></td>
+      <td>${v.telefone||'—'}</td>
+      <td>${v.email||'—'}</td>
+      <td><span class="badge">${total}</span></td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick="abrirModalVendedor('${v.id}')"><i class="ph ph-pencil"></i></button>
+        <button class="btn btn-outline btn-sm" style="color:var(--red)" onclick="deletarVendedor('${v.id}','${v.nome.replace(/'/g,"\\'")}')"><i class="ph ph-trash"></i></button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function popularFiltroVendedor() {
+  const sel = document.getElementById('filtro-vendedor');
+  if (!sel) return;
+  const atual = sel.value;
+  sel.innerHTML = '<option value="">Todos os vendedores</option>' +
+    vendedoresCache.map(v => `<option value="${v.id}">${v.nome}</option>`).join('');
+  if (atual) sel.value = atual;
+}
+
+function abrirModalVendedor(id) {
+  const editando = id ? vendedoresCache.find(v => v.id === id) : null;
+  document.getElementById('v-id').value    = editando?.id || '';
+  document.getElementById('v-nome').value  = editando?.nome || '';
+  document.getElementById('v-fone').value  = editando?.telefone || '';
+  document.getElementById('v-email').value = editando?.email || '';
+  document.querySelector('#modal-vendedor .modal-header h3').textContent = editando ? 'Editar vendedor' : 'Novo vendedor';
+  document.getElementById('modal-vendedor').classList.add('open');
+}
+
+async function salvarVendedor() {
+  const nome = document.getElementById('v-nome').value.trim();
+  const id   = document.getElementById('v-id').value;
+  if (!nome) { toast('Informe o nome.'); return; }
+  const dados = { nome, telefone: document.getElementById('v-fone').value, email: document.getElementById('v-email').value };
+  try {
+    if (id) { await api('PATCH', `/rest/v1/vendedores?id=eq.${id}`, dados); toast('Vendedor atualizado!'); }
+    else     { await api('POST',  '/rest/v1/vendedores', dados);             toast('Vendedor salvo!'); }
+    fecharModal('modal-vendedor');
+    carregarVendedores();
+  } catch(e) { toast('Erro: ' + e.message); }
+}
+
+async function deletarVendedor(id, nome) {
+  if (!confirm(`Deletar o vendedor "${nome}"?`)) return;
+  try { await api('DELETE', `/rest/v1/vendedores?id=eq.${id}`); toast('Vendedor removido.'); carregarVendedores(); }
+  catch(e) { toast('Erro: ' + e.message); }
+}
+
+// ── SEÇÃO VENDEDORES ──
+const _showSectionOrig = showSection;
+function showSection(id) {
+  _showSectionOrig(id);
+  if (id === 'vendedores') {
+    document.getElementById('sec-vendedores').style.display = 'block';
+    renderTabelaVendedores();
+  } else {
+    const sv = document.getElementById('sec-vendedores');
+    if (sv) sv.style.display = 'none';
+  }
+}
+
+// ── CEP / ENDEREÇO CLIENTE ──
+function mascaraCEP(el) {
+  let v = el.value.replace(/\D/g,'');
+  if (v.length > 5) v = v.slice(0,5) + '-' + v.slice(5,8);
+  el.value = v;
+}
+
+async function buscarCEP() {
+  const cepEl = document.getElementById('c-cep');
+  if (!cepEl) return;
+  const cep = cepEl.value.replace(/\D/g,'');
+  if (!cep || cep.length !== 8) return;
+  try {
+    const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+    const d = await r.json();
+    if (d.erro) { toast('CEP não encontrado.'); return; }
+    document.getElementById('c-rua').value    = d.logradouro || '';
+    document.getElementById('c-bairro').value = d.bairro || '';
+    document.getElementById('c-cidade').value = d.localidade || '';
+    document.getElementById('c-estado').value = d.uf || 'SP';
+    document.getElementById('c-numero').focus();
+    toast('Endereço preenchido!');
+  } catch(e) { toast('Erro ao buscar CEP.'); }
+}
+
 </script>
 </body>
 </html>

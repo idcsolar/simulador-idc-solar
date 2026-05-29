@@ -200,6 +200,11 @@ h1{font-family:'Fraunces',serif;font-size:28px;font-weight:700;margin-bottom:8px
             <div class="form-field"><label>Telefone / WhatsApp *</label><input type="tel" id="cli-fone" maxlength="15" placeholder="(00) 00000-0000" oninput="mascaraTel(this)"/></div>
             <div class="form-field"><label>E-mail</label><input type="email" id="cli-email" placeholder="cliente@email.com"/></div>
             <div class="form-field full"><label>Endereço de instalação</label><input type="text" id="cli-endereco" placeholder="Rua, número, bairro, cidade/SP"/></div>
+            <div class="form-field"><label>Vendedor responsável</label>
+              <select id="cli-vendedor">
+                <option value="">Selecione o vendedor...</option>
+              </select>
+            </div>
           </div>
         </div>
         <div class="form-section">
@@ -501,7 +506,15 @@ async function carregarEquipamentosDB() {
     paineisDB    = await rP.json() || [];
     inversoresDB = await rI.json() || [];
     clientesDB   = await rC.json() || [];
-    if(setups.length) renderSetups();
+    if(setups.length) { salvarCondicoesPagamento(); renderSetups(); }
+    // Carregar vendedores
+    try {
+      const rV = await fetch(SUPA_URL+'/rest/v1/vendedores?select=id,nome&order=nome.asc', {headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}});
+      const vendedores = await rV.json() || [];
+      const sel = document.getElementById('cli-vendedor');
+      if (sel) sel.innerHTML = '<option value="">Selecione o vendedor...</option>' +
+        vendedores.map(v => `<option value="${v.id}">${v.nome}</option>`).join('');
+    } catch(e) { console.warn('Vendedores:', e); }
   } catch(e) { console.warn('Equipamentos não carregados:', e); }
 }
 
@@ -1546,6 +1559,8 @@ async function gerarPropostaFinal() {
   const proposta = {
     numero:            numeroSeq,
     prop_numero:       document.getElementById('prop-numero').value,
+    vendedor_id:    document.getElementById('cli-vendedor')?.value || null,
+    vendedor_nome:  document.getElementById('cli-vendedor')?.selectedOptions[0]?.text || '',
     cliente_nome:      nome,
     cliente_fone:      fone,
     cliente_email:     document.getElementById('cli-email').value,
@@ -1783,6 +1798,8 @@ function novaPropostaCompleto() {
   const elR  = document.getElementById('prop-revisao');
   if(elN) elN.value = `IDC.RG.${seq}.${ano}.R00`;
   if(elR) elR.value = '0';
+  const selV = document.getElementById('cli-vendedor');
+  if (selV) selV.value = '';
   const _hspBadge = document.getElementById('hsp-badge');
   if(_hspBadge) _hspBadge.innerHTML = '<i class="ph ph-sun"></i> Selecione uma cidade';
   const _hspWrap = document.getElementById('hsp-meses-wrap');
@@ -1876,6 +1893,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
 });
 
 function carregarPropostaParaEdicao(p, editarId) {
+  // Preencher vendedor se existir
+  if (p.dados_proposta?.vendedor_id) {
+    const selV = document.getElementById('cli-vendedor');
+    if (selV) selV.value = p.dados_proposta.vendedor_id;
+  }
   window._editandoPropostaId   = editarId;
   window._editandoRevisaoAtual = p.revisao || 0;
   window._editandoLinkUnico    = p.link_unico || null; // preserva o link original
