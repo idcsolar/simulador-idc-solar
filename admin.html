@@ -1346,14 +1346,20 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function showSection(id) {
+  // Troca seção visível (CSS .section/.section.active controla display)
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-item[data-section]').forEach(n => n.classList.remove('active'));
   const sec = document.getElementById('sec-' + id);
   if(sec) sec.classList.add('active');
   const activeNav = document.querySelector(`.nav-item[data-section="${id}"]`);
   if(activeNav) activeNav.classList.add('active');
+  // Carrega dados da seção correspondente
   if(id === 'dashboard')    carregarDashboard();
   if(id === 'equipamentos') { carregarPaineis(); carregarInversores(); }
+  if(id === 'propostas')    carregarPropostas();
+  if(id === 'clientes')     carregarClientes();
+  if(id === 'vendedores')   carregarVendedores();
+  if(id === 'crm')          carregarCRM();
 }
 
 // ── DASHBOARD ──
@@ -3250,18 +3256,6 @@ async function deletarVendedor(id, nome) {
   catch(e) { toast('Erro: ' + e.message); }
 }
 
-// ── SEÇÃO VENDEDORES ──
-// ── Extensão do showSection para carregar dados por seção ──
-// A exibição é controlada pelo CSS (.section / .section.active),
-// aqui apenas disparamos o carregamento de dados específicos de cada seção.
-const _showSectionOrig = showSection;
-function showSection(id) {
-  _showSectionOrig(id);
-  if (id === 'vendedores') carregarVendedores();
-  if (id === 'propostas')  carregarPropostas();
-  if (id === 'clientes')   carregarClientes();
-  if (id === 'crm')        carregarCRM();
-}
 
 // ── CEP / ENDEREÇO CLIENTE ──
 function mascaraCEP(el) {
