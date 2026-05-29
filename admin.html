@@ -478,26 +478,6 @@ tbody td:first-child { color: var(--black); font-weight: 500; }
 <body>
 
 <!-- LOGIN -->
-
-<script>
-// DEBUG: interceptar erros globais
-window.onerror = function(msg, src, line, col, err) {
-  document.body.insertAdjacentHTML('afterbegin', 
-    '<div style="position:fixed;top:0;left:0;right:0;background:red;color:white;padding:10px;z-index:99999;font-size:12px;">' +
-    'ERRO JS: ' + msg + ' | Linha: ' + line + ' | ' + (src||'') + 
-    '</div>'
-  );
-  return false;
-};
-window.addEventListener('unhandledrejection', function(e) {
-  document.body.insertAdjacentHTML('afterbegin',
-    '<div style="position:fixed;top:40px;left:0;right:0;background:orange;color:black;padding:10px;z-index:99999;font-size:12px;">' +
-    'PROMISE ERROR: ' + e.reason +
-    '</div>'
-  );
-});
-</script>
-
 <div id="login-screen">
   <div class="login-card">
     <div class="login-logo">IDC <span>Solar</span></div>
@@ -829,6 +809,25 @@ window.addEventListener('unhandledrejection', function(e) {
       </div>
     </section>
 
+<!-- SEÇÃO VENDEDORES -->
+<section id="sec-vendedores" class="section">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+    <div>
+      <h2 style="margin:0;font-size:20px;">Vendedores</h2>
+      <p style="margin:4px 0 0;color:var(--gray);font-size:13px;">Cadastro de vendedores</p>
+    </div>
+    <button class="btn btn-primary" onclick="abrirModalVendedor()">
+      <i class="ph ph-plus"></i> Novo vendedor
+    </button>
+  </div>
+  <div class="card">
+    <table class="tabela-propostas" id="tabela-vendedores">
+      <thead><tr><th>Nome</th><th>Telefone</th><th>E-mail</th><th>Propostas</th><th>Ações</th></tr></thead>
+      <tbody id="tbody-vendedores"><tr><td colspan="5" style="text-align:center;color:var(--gray);">Carregando...</td></tr></tbody>
+    </table>
+  </div>
+</section>
+
   </main>
 </div>
 
@@ -1141,24 +1140,6 @@ window.addEventListener('unhandledrejection', function(e) {
   </div>
 </div>
 
-<!-- SEÇÃO VENDEDORES -->
-<section id="sec-vendedores" class="section">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-    <div>
-      <h2 style="margin:0;font-size:20px;">Vendedores</h2>
-      <p style="margin:4px 0 0;color:var(--gray);font-size:13px;">Cadastro de vendedores</p>
-    </div>
-    <button class="btn btn-primary" onclick="abrirModalVendedor()">
-      <i class="ph ph-plus"></i> Novo vendedor
-    </button>
-  </div>
-  <div class="card">
-    <table class="tabela-propostas" id="tabela-vendedores">
-      <thead><tr><th>Nome</th><th>Telefone</th><th>E-mail</th><th>Propostas</th><th>Ações</th></tr></thead>
-      <tbody id="tbody-vendedores"><tr><td colspan="5" style="text-align:center;color:var(--gray);">Carregando...</td></tr></tbody>
-    </table>
-  </div>
-</section>
 
 <!-- MODAL CLIENTE -->
 <div class="modal-overlay" id="modal-cliente">
