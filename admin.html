@@ -1536,6 +1536,41 @@ async function authApi(method, path, body) {
   return r.json();
 }
 
+
+// ── REFRESH AUTOMÁTICO DE TOKEN ──
+// Renova o access_token usando o refresh_token antes de expirar (a cada 50 min)
+// O token Supabase expira em 1h — renovamos com 10min de antecedência
+let _refreshTimer = null;
+function agendarRefreshToken() {
+  if (_refreshTimer) clearTimeout(_refreshTimer);
+  _refreshTimer = setTimeout(renovarToken, 50 * 60 * 1000); // 50 minutos
+}
+
+async function renovarToken() {
+  const refreshToken = localStorage.getItem('idc_refresh_token');
+  if (!refreshToken) return;
+  try {
+    const r = await fetch(SUPA_URL + '/auth/v1/token?grant_type=refresh_token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY },
+      body: JSON.stringify({ refresh_token: refreshToken })
+    });
+    const data = await r.json();
+    if (data.access_token) {
+      token = data.access_token;
+      localStorage.setItem('idc_admin_token', token);
+      if (data.refresh_token) localStorage.setItem('idc_refresh_token', data.refresh_token);
+      agendarRefreshToken(); // reagenda para o próximo ciclo
+    } else {
+      // Refresh falhou — redireciona para login
+      fazerLogout();
+      toast('Sessão expirada. Faça login novamente.');
+    }
+  } catch(e) {
+    console.warn('Falha ao renovar token:', e);
+  }
+}
+
 // ── LOGIN ──
 async function fazerLogin() {
   const email = document.getElementById('login-email').value.trim();
@@ -1547,8 +1582,11 @@ async function fazerLogin() {
   if (data.access_token) {
     token = data.access_token;
     localStorage.setItem('idc_admin_token', token);
+    // Salvar refresh_token para renovação automática da sessão
+    if (data.refresh_token) localStorage.setItem('idc_refresh_token', data.refresh_token);
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
+    agendarRefreshToken(); // inicia renovação automática
     carregarDashboard();
     carregarPropostas();
     carregarClientes();
@@ -1562,6 +1600,7 @@ async function fazerLogin() {
 function fazerLogout() {
   token = null;
   localStorage.removeItem('idc_admin_token');
+  localStorage.removeItem('idc_refresh_token');
   document.getElementById('app').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
 }
@@ -1578,6 +1617,7 @@ async function restaurarSessao() {
     if(r.ok) {
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('app').style.display = 'block';
+      agendarRefreshToken(); // inicia renovação automática ao restaurar sessão
       carregarDashboard();
       carregarPropostas();
       carregarClientes();
