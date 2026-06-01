@@ -2499,8 +2499,10 @@ function renderCRM(list) {
 
 // ── MODAL ──
 function fecharModal(id) { document.getElementById(id).classList.remove('open'); }
+// Modal fecha APENAS pelo X, Cancelar ou Salvar — não pelo clique no overlay
+// (evita perda de dados ao clicar fora ou ao arrastar texto)
 document.querySelectorAll('.modal-overlay').forEach(m => {
-  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+  m.addEventListener('mousedown', e => { e.stopPropagation(); });
 });
 
 // ── UTILS ──
@@ -3844,22 +3846,18 @@ async function gerarDocxProcuracao() {
   });
 
   try {
-    const buf = await Packer.toBuffer(doc);
     const nomeArquivo = `Procuracao_${concess.replace(/\s/g,'_')}_${nome.split(' ')[0]}.docx`;
+    // Gera Blob diretamente (Packer.toBlob é a API correta para browser)
+    const blob = await Packer.toBlob(doc);
+    saveAs(blob, nomeArquivo);
 
-    // Salvar localmente (download imediato)
-    saveAs(
-      new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }),
-      nomeArquivo
-    );
-
-    // Upload para Supabase Storage e registro na tabela documentos_gerados
+    // Upload para Supabase Storage (converte blob para ArrayBuffer)
     if (token) {
       try {
+        const buf = await blob.arrayBuffer();
         await uploadDocumentoStorage(buf, nomeArquivo, 'procuracao', procClienteIdSelecionado, null);
         toast('✅ Procuração gerada e salva no histórico!');
       } catch(eUp) {
-        // Upload falhou mas o download já aconteceu — avisa sem bloquear
         console.warn('Upload storage falhou:', eUp);
         toast('✅ Procuração gerada! (Falha ao salvar no histórico)');
       }
@@ -4320,11 +4318,14 @@ async function gerarContratos() {
 
   if (gerarInst) {
     try {
-      const buf = await buildContratoInstalacao({ nome, cpf, rg, endereco, cidade, data, concess, pagamentos });
+      const blobInst = await buildContratoInstalacao({ nome, cpf, rg, endereco, cidade, data, concess, pagamentos });
       const nomeInst = `Contrato_Instalacao_${nome.split(' ')[0]}.docx`;
-      saveAs(new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}), nomeInst);
+      saveAs(blobInst, nomeInst);
       if (token) {
-        try { await uploadDocumentoStorage(buf, nomeInst, 'contrato_instalacao', ctClienteId || null, null); } catch(e) { console.warn(e); }
+        try {
+          const bufInst = await blobInst.arrayBuffer();
+          await uploadDocumentoStorage(bufInst, nomeInst, 'contrato_instalacao', ctClienteId || null, null);
+        } catch(e) { console.warn(e); }
       }
       toast('✅ Contrato de Instalação gerado!');
     } catch(e) { toast('Erro contrato instalação: ' + e.message); console.error(e); }
@@ -4332,11 +4333,14 @@ async function gerarContratos() {
 
   if (gerarMon) {
     try {
-      const buf = await buildContratoMonitoramento({ nome, cpf, endereco, cidade, data });
+      const blobMon = await buildContratoMonitoramento({ nome, cpf, endereco, cidade, data });
       const nomeMon = `Contrato_Monitoramento_${nome.split(' ')[0]}.docx`;
-      saveAs(new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}), nomeMon);
+      saveAs(blobMon, nomeMon);
       if (token) {
-        try { await uploadDocumentoStorage(buf, nomeMon, 'contrato_monitoramento', ctClienteId || null, null); } catch(e) { console.warn(e); }
+        try {
+          const bufMon = await blobMon.arrayBuffer();
+          await uploadDocumentoStorage(bufMon, nomeMon, 'contrato_monitoramento', ctClienteId || null, null);
+        } catch(e) { console.warn(e); }
       }
       toast('✅ Contrato de Monitoramento gerado!');
     } catch(e) { toast('Erro contrato monitoramento: ' + e.message); console.error(e); }
@@ -4496,7 +4500,7 @@ async function buildContratoInstalacao({ nome, cpf, rg, endereco, cidade, data, 
     ]}]
   });
 
-  return await Packer.toBuffer(doc);
+  return await Packer.toBlob(doc); // toBlob é a API correta para browser (toBuffer é Node.js only)
 }
 
 // ══════════════════════════════════════════════
@@ -4611,7 +4615,7 @@ async function buildContratoMonitoramento({ nome, cpf, endereco, cidade, data })
                      ['____________________________', 'IDC Engenharia e Instalações LTDA', 'CONTRATADA']),
   ]}]});
 
-  return await Packer.toBuffer(doc);
+  return await Packer.toBlob(doc); // toBlob é a API correta para browser (toBuffer é Node.js only)
 }
 
 // Fechar dropdown ao clicar fora
