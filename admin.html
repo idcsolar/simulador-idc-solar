@@ -764,14 +764,14 @@ tbody td:first-child { color: var(--black); font-weight: 500; }
             <div style="font-size:12px;color:var(--gray);">Fotos sequenciais e checklist</div>
           </div>
         </div>
-        <div class="card" style="cursor:pointer;transition:box-shadow 0.2s;" onmouseenter="this.style.boxShadow='0 8px 32px rgba(0,0,0,0.12)'" onmouseleave="this.style.boxShadow=''">
+        <div class="card" style="cursor:pointer;transition:box-shadow 0.2s;" onclick="abrirModalContratos()" onmouseenter="this.style.boxShadow='0 8px 32px rgba(0,0,0,0.12)'" onmouseleave="this.style.boxShadow=''">
           <div class="card-body" style="text-align:center;padding:32px 20px;">
             <i class="ph ph-pen-nib" style="font-size:36px;color:var(--orange);margin-bottom:12px;display:block;"></i>
             <div style="font-size:15px;font-weight:600;margin-bottom:6px;">Contrato</div>
-            <div style="font-size:12px;color:var(--gray);">Gerado com condições de pagamento</div>
+            <div style="font-size:12px;color:var(--gray);">Instalação · Monitoramento</div>
           </div>
         </div>
-        <div class="card" style="cursor:pointer;transition:box-shadow 0.2s;" onmouseenter="this.style.boxShadow='0 8px 32px rgba(0,0,0,0.12)'" onmouseleave="this.style.boxShadow=''">
+        <div class="card" style="cursor:pointer;transition:box-shadow 0.2s;" onclick="abrirModalProcuracao()" onmouseenter="this.style.boxShadow='0 8px 32px rgba(0,0,0,0.12)'" onmouseleave="this.style.boxShadow=''">
           <div class="card-body" style="text-align:center;padding:32px 20px;">
             <i class="ph ph-stamp" style="font-size:36px;color:var(--orange);margin-bottom:12px;display:block;"></i>
             <div style="font-size:15px;font-weight:600;margin-bottom:6px;">Procuração</div>
@@ -786,14 +786,7 @@ tbody td:first-child { color: var(--black); font-weight: 500; }
           </div>
         </div>
       </div>
-      <div style="margin-top:24px;padding:20px;background:var(--orange-light);border-radius:var(--radius);border:1px solid rgba(232,146,10,0.2);">
-        <div style="font-size:13px;font-weight:600;color:var(--orange-dark);margin-bottom:4px;">
-          <i class="ph ph-info"></i> Em desenvolvimento
-        </div>
-        <div style="font-size:13px;color:var(--gray-dark);">
-          Os geradores de documentos serão construídos em etapas. Comece cadastrando os equipamentos para que os dados estejam disponíveis quando os geradores forem ativados.
-        </div>
-      </div>
+
     </section>
 
   
@@ -809,28 +802,95 @@ tbody td:first-child { color: var(--black); font-weight: 500; }
       </div>
     </section>
 
-<!-- SEÇÃO VENDEDORES -->
-<section id="sec-vendedores" class="section">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-    <div>
-      <h2 style="margin:0;font-size:20px;">Vendedores</h2>
-      <p style="margin:4px 0 0;color:var(--gray);font-size:13px;">Cadastro de vendedores</p>
-    </div>
-    <button class="btn btn-primary" onclick="abrirModalVendedor()">
-      <i class="ph ph-plus"></i> Novo vendedor
-    </button>
-  </div>
-  <div class="card">
-    <table class="tabela-propostas" id="tabela-vendedores">
-      <thead><tr><th>Nome</th><th>Telefone</th><th>E-mail</th><th>Propostas</th><th>Ações</th></tr></thead>
-      <tbody id="tbody-vendedores"><tr><td colspan="5" style="text-align:center;color:var(--gray);">Carregando...</td></tr></tbody>
-    </table>
-  </div>
-</section>
-
   </main>
 </div>
 
+
+<!-- ════════════════════════════════════════════════════════
+     MODAL CONTRATOS — Instalação e/ou Monitoramento
+     Geração 100% browser via docx.js + FileSaver.js (CDN)
+     ════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-contratos">
+  <div class="modal" style="max-width:660px;">
+    <div class="modal-header">
+      <h3>Gerar Contrato(s)</h3>
+      <button class="modal-close" onclick="fecharModal('modal-contratos')">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Seleção de tipo -->
+      <div class="form-section-title"><i class="ph ph-check-square"></i> Qual(is) contrato(s) gerar?</div>
+      <div style="display:flex;gap:12px;margin-bottom:20px;">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 16px;border:1.5px solid var(--border);border-radius:10px;flex:1;">
+          <input type="checkbox" id="ct-inst" checked style="width:16px;height:16px;accent-color:var(--orange);">
+          <div><div style="font-weight:600;font-size:13px;">Instalação</div><div style="font-size:11px;color:var(--gray);">Com valores e pagamentos</div></div>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 16px;border:1.5px solid var(--border);border-radius:10px;flex:1;">
+          <input type="checkbox" id="ct-mon" style="width:16px;height:16px;accent-color:var(--orange);">
+          <div><div style="font-weight:600;font-size:13px;">Monitoramento</div><div style="font-size:11px;color:var(--gray);">Gratuito no primeiro ano</div></div>
+        </label>
+      </div>
+
+      <!-- Busca de proposta -->
+      <div class="form-section-title"><i class="ph ph-magnifying-glass"></i> Buscar proposta (opcional)</div>
+      <div class="form-field" style="position:relative;">
+        <input type="text" id="ct-busca" placeholder="Nome do cliente ou nº da proposta..."
+          oninput="buscarPropostaParaContrato(this.value)" autocomplete="off"/>
+        <div id="ct-lista-busca" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid var(--border);border-radius:8px;z-index:50;max-height:180px;overflow-y:auto;box-shadow:var(--shadow);"></div>
+      </div>
+      <div id="ct-cliente-badge" style="display:none;margin-bottom:12px;padding:8px 12px;background:#DCFCE7;border-radius:8px;font-size:13px;color:#166534;">
+        <i class="ph ph-check-circle"></i> <span id="ct-cliente-nome-badge"></span>
+        <button onclick="limparPropostaContrato()" style="float:right;background:none;border:none;cursor:pointer;color:#166534;font-size:12px;">✕ Limpar</button>
+      </div>
+
+      <!-- Dados do contratante -->
+      <div class="form-section-title"><i class="ph ph-user"></i> Contratante</div>
+      <div class="form-grid">
+        <div class="form-field full"><label>Nome completo *</label>
+          <input type="text" id="ct-nome" placeholder="Nome completo"/></div>
+        <div class="form-field"><label>CPF *</label>
+          <input type="text" id="ct-cpf" placeholder="000.000.000-00" oninput="mascaraCPF(this)" maxlength="14"/></div>
+        <div class="form-field"><label>RG *</label>
+          <input type="text" id="ct-rg" placeholder="00.000.000-0"/></div>
+        <div class="form-field full"><label>Endereço completo *</label>
+          <input type="text" id="ct-endereco" placeholder="Rua, nº, complemento, bairro, cidade/UF, CEP"/></div>
+      </div>
+
+      <!-- Dados gerais -->
+      <div class="form-section-title"><i class="ph ph-map-pin"></i> Local e data</div>
+      <div class="form-grid">
+        <div class="form-field"><label>Cidade *</label>
+          <input type="text" id="ct-cidade" value="São Paulo"/></div>
+        <div class="form-field"><label>Data do contrato *</label>
+          <input type="date" id="ct-data"/></div>
+        <div class="form-field"><label>Concessionária</label>
+          <select id="ct-concessionaria">
+            <option>Enel SP</option><option>CPFL Paulista</option>
+            <option>CPFL Piratininga</option><option>Elektro</option>
+            <option>EDP São Paulo</option><option>CESP</option><option>Outra</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Pagamentos (só aparece se instalação marcada) -->
+      <div id="ct-bloco-pagamentos">
+        <div class="form-section-title"><i class="ph ph-currency-circle-dollar"></i> Pagamentos
+          <button onclick="adicionarPagamento()" style="margin-left:auto;background:none;border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer;">
+            <i class="ph ph-plus"></i> Adicionar
+          </button>
+        </div>
+        <div id="ct-pagamentos-lista"></div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="fecharModal('modal-contratos')">Cancelar</button>
+      <button class="btn btn-primary" onclick="gerarContratos()">
+        <i class="ph ph-file-doc"></i> Gerar DOCX
+      </button>
+    </div>
+  </div>
+</div>
 <!-- MODAL PAINEL SOLAR -->
 <div class="modal-overlay" id="modal-painel">
   <div class="modal" style="max-width:760px;">
@@ -1140,6 +1200,24 @@ tbody td:first-child { color: var(--black); font-weight: 500; }
   </div>
 </div>
 
+<!-- SEÇÃO VENDEDORES -->
+<section id="sec-vendedores" class="section">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+    <div>
+      <h2 style="margin:0;font-size:20px;">Vendedores</h2>
+      <p style="margin:4px 0 0;color:var(--gray);font-size:13px;">Cadastro de vendedores</p>
+    </div>
+    <button class="btn btn-primary" onclick="abrirModalVendedor()">
+      <i class="ph ph-plus"></i> Novo vendedor
+    </button>
+  </div>
+  <div class="card">
+    <table class="tabela-propostas" id="tabela-vendedores">
+      <thead><tr><th>Nome</th><th>Telefone</th><th>E-mail</th><th>Propostas</th><th>Ações</th></tr></thead>
+      <tbody id="tbody-vendedores"><tr><td colspan="5" style="text-align:center;color:var(--gray);">Carregando...</td></tr></tbody>
+    </table>
+  </div>
+</section>
 
 <!-- MODAL CLIENTE -->
 <div class="modal-overlay" id="modal-cliente">
@@ -3257,6 +3335,531 @@ async function deletarVendedor(id, nome) {
   catch(e) { toast('Erro: ' + e.message); }
 }
 
+
+
+// ════════════════════════════════════════════════════════
+// MÓDULO CONTRATOS — Geração de DOCX 100% no browser
+// Usa docx.js (UMD) + FileSaver.js carregados via CDN
+// sob demanda (só quando o usuário clica em Gerar).
+// Contrato Instalação: Calibri 11pt, A4, margens 1417/1416/1560
+// Contrato Monitoramento: Arial 12pt, US Letter, margens 1440/720/900
+// ════════════════════════════════════════════════════════
+
+let pagamentoCount = 0; // contador de linhas de pagamento
+
+// ── Abre modal e inicializa ──
+function abrirModalContratos() {
+  // Limpar campos
+  ['ct-busca','ct-nome','ct-cpf','ct-rg','ct-endereco'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('ct-cidade').value = 'São Paulo';
+  document.getElementById('ct-data').value = new Date().toISOString().split('T')[0];
+  document.getElementById('ct-cliente-badge').style.display = 'none';
+  document.getElementById('ct-lista-busca').style.display = 'none';
+  document.getElementById('ct-inst').checked = true;
+  document.getElementById('ct-mon').checked = false;
+
+  // Iniciar com 2 linhas de pagamento
+  document.getElementById('ct-pagamentos-lista').innerHTML = '';
+  pagamentoCount = 0;
+  adicionarPagamento();
+  adicionarPagamento();
+
+  // Toggle bloco pagamentos conforme checkbox
+  document.getElementById('ct-inst').onchange = toggleBlocoPagamentos;
+  toggleBlocoPagamentos();
+
+  document.getElementById('modal-contratos').classList.add('open');
+}
+
+function toggleBlocoPagamentos() {
+  document.getElementById('ct-bloco-pagamentos').style.display =
+    document.getElementById('ct-inst').checked ? 'block' : 'none';
+}
+
+// ── Adiciona linha de pagamento ──
+function adicionarPagamento() {
+  const i = pagamentoCount++;
+  const lista = document.getElementById('ct-pagamentos-lista');
+  const div = document.createElement('div');
+  div.id = `pagto-row-${i}`;
+  div.style.cssText = 'display:grid;grid-template-columns:1.5fr 1.5fr 1fr 1fr 32px;gap:8px;margin-bottom:8px;align-items:end;';
+  div.innerHTML = `
+    <div class="form-field" style="margin:0;">
+      <label style="font-size:11px;">Forma</label>
+      <select id="pagto-forma-${i}" style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;">
+        <option>Cartão de crédito</option>
+        <option>Financiamento</option>
+        <option>À vista (PIX/TED)</option>
+        <option>Boleto</option>
+      </select>
+    </div>
+    <div class="form-field" style="margin:0;">
+      <label style="font-size:11px;">Destinatário</label>
+      <input type="text" id="pagto-dest-${i}" placeholder="Ex: distribuidora / IDC"
+        style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;"/>
+    </div>
+    <div class="form-field" style="margin:0;">
+      <label style="font-size:11px;">Valor total (R$)</label>
+      <input type="number" id="pagto-total-${i}" placeholder="0,00" step="0.01"
+        style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;"/>
+    </div>
+    <div class="form-field" style="margin:0;">
+      <label style="font-size:11px;">Parcelas</label>
+      <input type="number" id="pagto-parc-${i}" placeholder="1" min="1" value="1"
+        style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;"/>
+    </div>
+    <button onclick="removerPagamento(${i})"
+      style="background:none;border:1px solid var(--border);border-radius:8px;padding:7px;cursor:pointer;color:var(--gray);height:36px;">✕</button>
+  `;
+  lista.appendChild(div);
+}
+
+function removerPagamento(i) {
+  const el = document.getElementById(`pagto-row-${i}`);
+  if (el) el.remove();
+}
+
+// ── Busca proposta ──
+function buscarPropostaParaContrato(q) {
+  const lista = document.getElementById('ct-lista-busca');
+  if (!q || q.length < 2) { lista.style.display = 'none'; return; }
+  const filtradas = propostasCache.filter(p =>
+    (p.cliente_nome||'').toLowerCase().includes(q.toLowerCase()) ||
+    String(p.prop_numero||'').toLowerCase().includes(q.toLowerCase())
+  ).slice(0, 6);
+  if (!filtradas.length) { lista.style.display = 'none'; return; }
+  lista.innerHTML = filtradas.map(p => `
+    <div style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px;"
+      onmouseenter="this.style.background='var(--bg)'" onmouseleave="this.style.background=''"
+      onclick="preencherPropostaContrato('${p.id}')">
+      <strong>${p.cliente_nome||'—'}</strong>
+      <span style="color:var(--gray);margin-left:8px;">${p.prop_numero||''} · ${p.concessionaria||''}</span>
+    </div>`).join('');
+  lista.style.display = 'block';
+}
+
+function preencherPropostaContrato(id) {
+  const p = propostasCache.find(x => x.id === id);
+  if (!p) return;
+  let dp = {};
+  try { dp = JSON.parse(p.dados_proposta || '{}'); } catch(e) {}
+
+  document.getElementById('ct-nome').value      = p.cliente_nome || '';
+  document.getElementById('ct-cpf').value       = dp.cpf || '';
+  document.getElementById('ct-rg').value        = dp.rg || '';
+  document.getElementById('ct-endereco').value  = dp.endereco_completo || p.cliente_cidade || '';
+  if (p.concessionaria) document.getElementById('ct-concessionaria').value = p.concessionaria;
+
+  document.getElementById('ct-cliente-nome-badge').textContent = p.cliente_nome + ' — ' + (p.prop_numero||'');
+  document.getElementById('ct-cliente-badge').style.display = 'block';
+  document.getElementById('ct-lista-busca').style.display = 'none';
+  document.getElementById('ct-busca').value = '';
+}
+
+function limparPropostaContrato() {
+  document.getElementById('ct-cliente-badge').style.display = 'none';
+  document.getElementById('ct-busca').value = '';
+}
+
+// ── Coleta pagamentos do formulário ──
+function coletarPagamentos() {
+  const lista = document.getElementById('ct-pagamentos-lista');
+  const rows = lista.querySelectorAll('[id^="pagto-row-"]');
+  const pagamentos = [];
+  rows.forEach(row => {
+    const i = row.id.replace('pagto-row-', '');
+    const forma      = document.getElementById(`pagto-forma-${i}`)?.value || '';
+    const destinatario = document.getElementById(`pagto-dest-${i}`)?.value || '';
+    const valorTotal = parseFloat(document.getElementById(`pagto-total-${i}`)?.value || 0);
+    const numParcelas = parseInt(document.getElementById(`pagto-parc-${i}`)?.value || 1);
+    const valorParcela = numParcelas > 1 ? valorTotal / numParcelas : valorTotal;
+    if (valorTotal > 0) pagamentos.push({ forma, destinatario, valorTotal, valorParcela, numParcelas });
+  });
+  return pagamentos;
+}
+
+// ── Helpers compartilhados ──
+function dataExtensoContrato(str) {
+  const meses = ['janeiro','fevereiro','março','abril','maio','junho',
+                 'julho','agosto','setembro','outubro','novembro','dezembro'];
+  const d = new Date(str + 'T12:00:00');
+  return `${d.getDate()} de ${meses[d.getMonth()]} de ${d.getFullYear()}`;
+}
+
+function moedaContrato(v) {
+  return 'R$ ' + Number(v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function valorPorExtenso(num) {
+  const n = Math.round(num);
+  if (n === 0) return 'zero reais';
+  const u = ['','um','dois','três','quatro','cinco','seis','sete','oito','nove','dez',
+             'onze','doze','treze','quatorze','quinze','dezesseis','dezessete','dezoito','dezenove'];
+  const d2 = ['','','vinte','trinta','quarenta','cinquenta','sessenta','setenta','oitenta','noventa'];
+  const c2 = ['','cem','duzentos','trezentos','quatrocentos','quinhentos','seiscentos','setecentos','oitocentos','novecentos'];
+  function conv(n) {
+    if (n < 20) return u[n];
+    if (n < 100) return d2[Math.floor(n/10)] + (n%10 ? ' e ' + u[n%10] : '');
+    if (n === 100) return 'cem';
+    return c2[Math.floor(n/100)] + (n%100 ? ' e ' + conv(n%100) : '');
+  }
+  const mil = Math.floor(n/1000), resto = n%1000;
+  let r = '';
+  if (mil > 0) r += (mil === 1 ? 'mil' : conv(mil) + ' mil');
+  if (resto > 0) r += (r ? ' e ' : '') + conv(resto);
+  return r + ' reais';
+}
+
+// ── Carrega CDNs sob demanda ──
+async function carregarDocxLibs() {
+  if (window.docx) return;
+  await Promise.all([
+    new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/docx/8.5.0/docx.umd.min.js';
+      s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    }),
+    new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js';
+      s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    }),
+  ]);
+}
+
+// ── Botão principal: valida e dispara geração ──
+async function gerarContratos() {
+  const gerarInst = document.getElementById('ct-inst').checked;
+  const gerarMon  = document.getElementById('ct-mon').checked;
+  if (!gerarInst && !gerarMon) { toast('Selecione ao menos um contrato.'); return; }
+
+  const nome     = document.getElementById('ct-nome').value.trim();
+  const cpf      = document.getElementById('ct-cpf').value.trim();
+  const rg       = document.getElementById('ct-rg').value.trim();
+  const endereco = document.getElementById('ct-endereco').value.trim();
+  const cidade   = document.getElementById('ct-cidade').value.trim() || 'São Paulo';
+  const data     = document.getElementById('ct-data').value;
+  const concess  = document.getElementById('ct-concessionaria').value;
+
+  if (!nome || !cpf || !endereco || !data) {
+    toast('Preencha: nome, CPF, endereço e data.'); return;
+  }
+
+  const pagamentos = gerarInst ? coletarPagamentos() : [];
+  if (gerarInst && pagamentos.length === 0) {
+    toast('Adicione ao menos um pagamento com valor.'); return;
+  }
+
+  toast('Carregando bibliotecas...');
+  try {
+    await carregarDocxLibs();
+  } catch(e) {
+    toast('Erro ao carregar biblioteca DOCX. Verifique sua conexão.'); return;
+  }
+
+  if (gerarInst) {
+    try {
+      const buf = await buildContratoInstalacao({ nome, cpf, rg, endereco, cidade, data, concess, pagamentos });
+      saveAs(new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}),
+        `Contrato_Instalacao_${nome.split(' ')[0]}.docx`);
+      toast('✅ Contrato de Instalação gerado!');
+    } catch(e) { toast('Erro contrato instalação: ' + e.message); console.error(e); }
+  }
+
+  if (gerarMon) {
+    try {
+      const buf = await buildContratoMonitoramento({ nome, cpf, endereco, cidade, data });
+      saveAs(new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}),
+        `Contrato_Monitoramento_${nome.split(' ')[0]}.docx`);
+      toast('✅ Contrato de Monitoramento gerado!');
+    } catch(e) { toast('Erro contrato monitoramento: ' + e.message); console.error(e); }
+  }
+
+  fecharModal('modal-contratos');
+}
+
+// ══════════════════════════════════════════════
+// BUILD CONTRATO INSTALAÇÃO
+// Calibri 11pt, A4, margens top/bot:1417 left:1560 right:1416
+// ══════════════════════════════════════════════
+async function buildContratoInstalacao({ nome, cpf, rg, endereco, cidade, data, concess, pagamentos }) {
+  const {
+    Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+    AlignmentType, WidthType, BorderStyle, LevelFormat
+  } = docx;
+
+  const FONT = 'Calibri', SZ = 22;
+  const noBorder = { style: BorderStyle.NONE };
+  const noBorders = { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder };
+
+  const run = (text, opts = {}) => new TextRun({ text, font: FONT, size: SZ, ...opts });
+  const paraJust = (children, opts = {}) => new Paragraph({ alignment: AlignmentType.BOTH, spacing: { after: 160 }, children, ...opts });
+  const paraCenter = (children) => new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 160 }, children });
+  const clausula = (texto) => new Paragraph({ alignment: AlignmentType.BOTH, spacing: { before: 240, after: 160 }, children: [run(texto, { bold: true })] });
+  const bullet = (text) => new Paragraph({
+    alignment: AlignmentType.BOTH, spacing: { after: 120 },
+    numbering: { reference: 'inst-bullets', level: 0 },
+    children: [run(text)]
+  });
+
+  const dataStr = dataExtensoContrato(data).toUpperCase();
+  const totalValor = pagamentos.reduce((acc, p) => acc + (p.numParcelas > 1 ? p.valorParcela * p.numParcelas : p.valorTotal), 0);
+  const totalStr = `${moedaContrato(totalValor)} (${valorPorExtenso(totalValor).charAt(0).toUpperCase() + valorPorExtenso(totalValor).slice(1)})`;
+
+  // Linhas de pagamento
+  const parasPagamentos = pagamentos.map((p, idx) => {
+    const ordinal = ['Primeiro','Segundo','Terceiro','Quarto','Quinto'][idx] || `${idx+1}º`;
+    let txt = `${ordinal} pagamento`;
+    if (p.forma) txt += ` (${p.forma})`;
+    if (p.destinatario) txt += ` — pago para ${p.destinatario}`;
+    txt += ': ';
+    txt += p.numParcelas > 1
+      ? `${p.numParcelas}x de ${moedaContrato(p.valorParcela)}`
+      : `${moedaContrato(p.valorTotal)} à vista`;
+    txt += '.';
+    return bullet(txt);
+  });
+
+  // Cláusula imagens (instalação usa bullet com '-')
+  const clausulaImagens = [
+    clausula('CLÁUSULA DÉCIMA – DAS IMAGENS E PRIVACIDADE'),
+    paraJust([run('A CONTRATADA está autorizada a fotografar e/ou filmar o imóvel do CONTRATANTE durante as etapas de execução, instalação, manutenção ou inspeção técnica dos serviços contratados, exclusivamente para as seguintes finalidades:')]),
+    bullet('Registro técnico e documentação do serviço prestado;'),
+    bullet('Elaboração de relatórios, laudos e memoriais técnicos;'),
+    bullet('Composição de portfólio institucional, divulgação comercial e material de marketing da CONTRATADA, em qualquer meio ou plataforma.'),
+    paraJust([run('O CONTRATANTE autoriza expressamente o uso das imagens para as finalidades acima, cedendo à CONTRATADA os direitos de uso, reprodução e divulgação das imagens coletadas, sem ônus.')]),
+    paraJust([run('A CONTRATADA compromete-se a:')]),
+    bullet('Preservar a privacidade do imóvel, abstendo-se de divulgar informações que permitam a identificação precisa da localização do imóvel (endereço completo, numeração, elementos de fachada identificáveis) sem autorização expressa do CONTRATANTE;'),
+    bullet('Não registrar imagens de pessoas presentes no imóvel sem o seu consentimento;'),
+    bullet('Utilizar as imagens de forma ética e profissional, vedado qualquer uso que possa expor o CONTRATANTE ou seus familiares a situações constrangedoras ou violação de privacidade.'),
+    paraJust([run('Caso o CONTRATANTE não deseje que as imagens sejam utilizadas para fins de divulgação comercial, deverá comunicar a CONTRATADA por escrito no ato da assinatura, hipótese em que as imagens serão utilizadas exclusivamente para fins técnicos e de documentação interna.')]),
+  ];
+
+  // Tabela de assinaturas
+  const tabelaAssinatura = (linhas1, linhas2) => new Table({
+    width: { size: 9000, type: WidthType.DXA }, columnWidths: [4400, 200, 4400],
+    rows: [new TableRow({ children: [
+      new TableCell({ borders: noBorders, children: linhas1.map(t => new Paragraph({ alignment: AlignmentType.CENTER, children: [run(t)] })) }),
+      new TableCell({ borders: noBorders, children: [new Paragraph({ children: [] })] }),
+      new TableCell({ borders: noBorders, children: linhas2.map(t => new Paragraph({ alignment: AlignmentType.CENTER, children: [run(t)] })) }),
+    ]})]
+  });
+
+  const doc = new Document({
+    numbering: { config: [{ reference: 'inst-bullets', levels: [{
+      level: 0, format: LevelFormat.BULLET, text: '-', alignment: AlignmentType.LEFT,
+      style: { paragraph: { indent: { left: 720, hanging: 360 } }, run: { font: FONT, size: SZ } }
+    }]}]},
+    sections: [{ properties: {
+      page: { size: { width: 11906, height: 16838 }, margin: { top: 1417, right: 1416, bottom: 1417, left: 1560 } }
+    }, children: [
+      new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 360 }, children: [run('INSTRUMENTO PARTICULAR DE CONTRATO DE SERVIÇOS DE INSTALAÇÃO DE MICRO GERAÇÃO DE USINA SOLAR FOTOVOLTAICA', { bold: true })] }),
+      paraJust([run('Pelo presente instrumento particular de contrato de prestação de serviços, as partes abaixo qualificadas:')]),
+      new Paragraph({ spacing: { after: 160 }, children: [] }),
+      paraJust([run(nome, {bold:true}), run(`, residente na ${endereco}, inscrito no CPF sob nº ${cpf}, RG sob nº ${rg}, doravante denominado(a) `), run('CONTRATANTE', {bold:true}), run(';')]),
+      new Paragraph({ spacing: { after: 160 }, children: [] }),
+      paraJust([run('IDC Engenharia e Instalações LTDA', {bold:true}), run(', com sede na Rua Francisco Dias, 833, Jardim da Saúde - São Paulo/SP, CEP 04148-000, inscrita no CNPJ sob nº 39.332.535/0001-03, neste ato representada por Raul Goulart Rahmi Garcia, engenheiro eletricista, CPF 366.376.308-02, doravante denominada '), run('CONTRATADA', {bold:true}), run(';')]),
+      new Paragraph({ spacing: { after: 240 }, children: [] }),
+
+      clausula('CLÁUSULA PRIMEIRA – DO OBJETO'),
+      paraJust([run('O presente contrato tem por objeto a prestação, por parte da '), run('CONTRATADA', {bold:true}), run(`, de serviços de engenharia para instalação e implementação de microgeração de usina solar fotovoltaica, no imóvel de propriedade do `), run('CONTRATANTE', {bold:true}), run('.')]),
+
+      clausula('CLÁUSULA SEGUNDA – VALORES E FORMA DE PAGAMENTO'),
+      paraJust([run('Pelos serviços descritos na Cláusula Primeira, a '), run('CONTRATANTE', {bold:true}), run(' pagará à '), run('CONTRATADA', {bold:true}), run(` o valor de ${totalStr}.`)]),
+      paraJust([run('Os pagamentos serão efetuados da seguinte forma:')]),
+      ...parasPagamentos,
+      paraJust([run('Os faturamentos serão efetuados da seguinte maneira:')]),
+      bullet('Kit Fotovoltaico — Faturado do distribuidor direto para o CONTRATANTE.'),
+      bullet('Projeto, engenharia, homologação, material de infraestrutura e instalação — Faturado pela CONTRATADA.'),
+      paraJust([run('Em caso de atraso de pagamento, os valores serão acrescidos de juros de mora de 1% a.m. e correção pelo IGP-M, além de multa de 10% sobre o valor em atraso. O não pagamento de qualquer parcela acarretará vencimento antecipado das demais e rescisão contratual.')]),
+
+      clausula('CLÁUSULA TERCEIRA – DOS PRAZOS'),
+      paraJust([run('O cumprimento deste contrato iniciará na data de sua assinatura. O prazo de entrega poderá ser prorrogado por caso fortuito, força maior, atraso no fornecimento de equipamentos, exigências da concessionária ou alterações solicitadas pelo CONTRATANTE.')]),
+      clausula('CRONOGRAMA PREVISTO (D = dia da assinatura)'),
+      bullet('D+1: execução dos pagamentos referentes a equipamentos e serviço.'),
+      bullet('D+30 dias: entrega dos equipamentos após pagamento.'),
+      bullet('D+40 dias: instalação dos equipamentos.'),
+      bullet('D+45 dias: entrega do projeto na concessionária.'),
+      bullet('15 a 30 dias úteis após entrega: aprovação do projeto (prazo da concessionária).'),
+      bullet('7 dias úteis após solicitação: aprovação da vistoria (prazo da concessionária).'),
+      bullet('7 dias úteis após aprovação da vistoria: troca do medidor (prazo da concessionária).'),
+
+      clausula('CLÁUSULA QUARTA – DAS OBRIGAÇÕES DA CONTRATADA'),
+      bullet('Utilizar equipamentos adequados e pessoal qualificado.'),
+      bullet('Responsabilizar-se por ônus trabalhistas, previdenciários e fiscais relativos a seus funcionários.'),
+      bullet('Desenvolver projeto técnico e apresentá-lo à concessionária para aprovação.'),
+      bullet('Garantir o uso correto dos EPIs pertinentes.'),
+
+      clausula('CLÁUSULA QUINTA – DAS OBRIGAÇÕES DO CONTRATANTE'),
+      bullet('Apresentar documentos e informações necessários à execução do contrato.'),
+      bullet('Efetuar os pagamentos nos prazos pactuados.'),
+      bullet('Liberar acesso ao imóvel para execução dos serviços.'),
+      bullet('Receber e armazenar os equipamentos de forma segura.'),
+      bullet('Assinar o Termo de Aceite ao final da instalação. A ausência de manifestação em até 5 dias úteis será interpretada como aceite tácito.'),
+      bullet('Visita técnica agendada não realizada por impedimento do CONTRATANTE sem cancelamento com 24h de antecedência: taxa de R$ 200,00 antes do reagendamento.'),
+
+      clausula('CLÁUSULA SEXTA – DA RESCISÃO'),
+      paraJust([run('O contrato poderá ser rescindido por inadimplemento não sanado em 30 dias, com multa de 10% do valor total. Rescisão unilateral pelo CONTRATANTE: aviso prévio de 15 dias e multa de 8% do valor do contrato.')]),
+
+      clausula('CLÁUSULA SÉTIMA – DAS GARANTIAS'),
+      paraJust([run('Garantia de mão de obra: 1 (um) ano contado do término da instalação. Equipamentos seguem garantia do distribuidor. A garantia não cobre desgaste normal, erros operacionais ou danos por intempéries.')]),
+
+      clausula('CLÁUSULA OITAVA – DA ALIENAÇÃO FIDUCIÁRIA'),
+      paraJust([run('Os equipamentos permanecem sob alienação fiduciária em favor da CONTRATADA até a quitação integral. O CONTRATANTE não poderá alienar, ceder ou remover os equipamentos sem autorização expressa.')]),
+
+      clausula('CLÁUSULA NONA – DO REAJUSTE DE PREÇO'),
+      paraJust([run('Valor fixo para o prazo de execução previsto. Atraso superior a 60 dias por responsabilidade do CONTRATANTE permite reajuste pelo IPCA acumulado, com notificação prévia de 10 dias.')]),
+
+      ...clausulaImagens,
+
+      clausula('CLÁUSULA DÉCIMA PRIMEIRA – DAS DISPOSIÇÕES GERAIS'),
+      bullet('Riscos de perdas ou danos dos equipamentos passam ao CONTRATANTE na data do recebimento.'),
+      bullet('Foro eleito: comarca de São Paulo/SP.'),
+
+      new Paragraph({ spacing: { before: 360, after: 160 }, children: [] }),
+      paraJust([run('E por estarem justas e contratadas, assinam o presente instrumento em 02 (duas) vias de igual teor.')]),
+      new Paragraph({ spacing: { after: 360 }, children: [] }),
+      paraCenter([run(`${cidade}, ${dataExtensoContrato(data)}.`)]),
+      new Paragraph({ spacing: { after: 600 }, children: [] }),
+      tabelaAssinatura([run('____________________________'), run(nome), run('CONTRATANTE', {bold:true})].map(r => r.text),
+                       ['____________________________', 'IDC Engenharia e Instalações LTDA', 'CONTRATADA']),
+      new Paragraph({ spacing: { after: 480 }, children: [] }),
+      clausula('Testemunhas:'),
+      tabelaAssinatura(['____________________________','Nome: ','RG: '],['____________________________','Nome: ','RG: ']),
+    ]}]
+  });
+
+  return await Packer.toBuffer(doc);
+}
+
+// ══════════════════════════════════════════════
+// BUILD CONTRATO MONITORAMENTO
+// Arial 12pt, US Letter, margens top/bot:1440 left:900 right:720
+// ══════════════════════════════════════════════
+async function buildContratoMonitoramento({ nome, cpf, endereco, cidade, data }) {
+  const {
+    Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+    AlignmentType, WidthType, BorderStyle
+  } = docx;
+
+  const FONT = 'Arial', SZ = 24;
+  const noBorder = { style: BorderStyle.NONE };
+  const noBorders = { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder };
+
+  const run = (text, opts = {}) => new TextRun({ text, font: FONT, size: SZ, ...opts });
+  const paraJust = (children) => new Paragraph({ alignment: AlignmentType.BOTH, spacing: { after: 200 }, children });
+  const clausula = (texto) => new Paragraph({ alignment: AlignmentType.BOTH, spacing: { before: 280, after: 200 }, children: [run(texto, { bold: true, allCaps: true })] });
+  const alinea = (letra, texto) => new Paragraph({ alignment: AlignmentType.BOTH, spacing: { after: 140 }, indent: { left: 720 }, children: [run(`${letra}) ${texto}`)] });
+
+  const tabelaAssinatura = (l1, l2) => new Table({
+    width: { size: 9000, type: WidthType.DXA }, columnWidths: [4400, 200, 4400],
+    rows: [new TableRow({ children: [
+      new TableCell({ borders: noBorders, children: l1.map(t => new Paragraph({ alignment: AlignmentType.CENTER, children: [run(t)] })) }),
+      new TableCell({ borders: noBorders, children: [new Paragraph({ children: [] })] }),
+      new TableCell({ borders: noBorders, children: l2.map(t => new Paragraph({ alignment: AlignmentType.CENTER, children: [run(t)] })) }),
+    ]})]
+  });
+
+  const clausulaImagens = [
+    clausula('CLÁUSULA DÉCIMA SEGUNDA – DAS IMAGENS E PRIVACIDADE'),
+    paraJust([run('A CONTRATADA está autorizada a fotografar e/ou filmar o imóvel do CONTRATANTE durante as etapas de execução, manutenção ou inspeção técnica, exclusivamente para as seguintes finalidades:')]),
+    alinea('a', 'Registro técnico e documentação do serviço prestado;'),
+    alinea('b', 'Elaboração de relatórios, laudos e memoriais técnicos;'),
+    alinea('c', 'Composição de portfólio institucional, divulgação comercial e material de marketing da CONTRATADA, em qualquer meio ou plataforma;'),
+    alinea('d', 'Compartilhamento de relatórios de desempenho e geração de energia, de forma parcial ou integral, para fins de divulgação comercial e marketing, resguardados os dados pessoais e a identificação do imóvel, conforme disposto nesta cláusula.'),
+    paraJust([run('O CONTRATANTE autoriza expressamente o uso das imagens e relatórios para as finalidades acima, cedendo à CONTRATADA os direitos de uso, reprodução e divulgação, sem ônus.')]),
+    paraJust([run('A CONTRATADA compromete-se a:')]),
+    alinea('a', 'Preservar a privacidade do imóvel, abstendo-se de divulgar informações que permitam a identificação precisa da sua localização sem autorização expressa do CONTRATANTE;'),
+    alinea('b', 'Não registrar imagens de pessoas presentes no imóvel sem o seu consentimento;'),
+    alinea('c', 'Utilizar as imagens de forma ética e profissional, vedado qualquer uso que possa expor o CONTRATANTE ou seus familiares a situações constrangedoras.'),
+    paraJust([run('Caso o CONTRATANTE não deseje que as imagens ou relatórios sejam utilizados para fins de divulgação comercial, deverá comunicar a CONTRATADA por escrito no ato da assinatura.')]),
+  ];
+
+  const doc = new Document({ sections: [{ properties: {
+    page: { size: { width: 12240, height: 15840 }, margin: { top: 1440, right: 720, bottom: 1440, left: 900 } }
+  }, children: [
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 400 }, children: [run('CONTRATO DE PRESTAÇÃO DE SERVIÇOS CONTINUADOS DE MONITORAMENTO DE USINA FOTOVOLTAICA', { bold: true })] }),
+    paraJust([run('Pelo presente instrumento particular, as partes abaixo identificadas:')]),
+    new Paragraph({ spacing: { after: 200 }, children: [] }),
+    paraJust([run('CONTRATANTE: ', {bold:true}), run(`${nome}, CPF nº ${cpf}, com endereço na ${endereco}, doravante denominado(a) `), run('CONTRATANTE', {bold:true}), run(';')]),
+    paraJust([run('CONTRATADA: ', {bold:true}), run('IDC Engenharia e Instalações LTDA, CNPJ nº 39.332.535/0001-03, com sede à Rua Francisco Dias, 833 – Jardim da Saúde - São Paulo/SP, doravante denominada '), run('CONTRATADA', {bold:true}), run(';')]),
+    new Paragraph({ spacing: { after: 280 }, children: [] }),
+
+    clausula('CLÁUSULA PRIMEIRA – DO OBJETO'),
+    paraJust([run('O presente contrato tem por objeto a prestação continuada de serviços especializados de monitoramento remoto da usina fotovoltaica de titularidade do CONTRATANTE.')]),
+    paraJust([run('Os serviços abrangem:')]),
+    alinea('a', 'Monitoramento remoto da usina;'),
+    alinea('b', 'Análise técnica de dados de desempenho e geração;'),
+    alinea('c', 'Notificação em caso de falha, inatividade ou anomalia no sistema;'),
+    alinea('d', 'Emissão de relatórios técnicos após o faturamento mensal;'),
+    alinea('e', 'Suporte técnico remoto para diagnóstico inicial.'),
+
+    clausula('CLÁUSULA SEGUNDA – DAS CONDIÇÕES DE PRESTAÇÃO'),
+    paraJust([run('O monitoramento será realizado por plataforma digital especializada. Os serviços limitam-se ao monitoramento remoto, não incluindo intervenções físicas, manutenções corretivas ou preventivas nos equipamentos.')]),
+    paraJust([run('A CONTRATADA não garante geração mínima de energia, nem se responsabiliza por perdas de produção decorrentes de falhas no sistema ou na comunicação de dados.')]),
+
+    clausula('CLÁUSULA TERCEIRA – DAS OBRIGAÇÕES DAS PARTES'),
+    paraJust([run('Obrigações da CONTRATADA:', {bold:true})]),
+    alinea('a', 'Executar os serviços com zelo e diligência;'),
+    alinea('b', 'Manter sigilo sobre informações técnicas e comerciais do CONTRATANTE;'),
+    alinea('c', 'Enviar relatório técnico ao CONTRATANTE após a liberação da fatura de energia.'),
+    paraJust([run('Obrigações do CONTRATANTE:', {bold:true})]),
+    alinea('a', 'Permitir o acesso remoto ao sistema de monitoramento e manter os dados de acesso atualizados;'),
+    alinea('b', 'Fornecer acesso ao portal da concessionária para consulta da fatura;'),
+    alinea('c', 'Efetuar os pagamentos nos prazos pactuados;'),
+    alinea('d', 'Comunicar previamente qualquer manutenção ou alteração nos equipamentos da usina.'),
+
+    clausula('CLÁUSULA QUARTA – DO PRAZO'),
+    paraJust([run('O presente contrato terá vigência de 12 (doze) meses, contados da data de sua assinatura, renovando-se mediante negociação futura.')]),
+
+    clausula('CLÁUSULA QUINTA – DA REMUNERAÇÃO'),
+    paraJust([run('O monitoramento é oferecido como benefício complementar à instalação realizada, sem custo ao CONTRATANTE durante o período inicial. Eventual renovação será estabelecida em aditivo contratual.')]),
+
+    clausula('CLÁUSULA SEXTA – DA LIMITAÇÃO DE RESPONSABILIDADE'),
+    paraJust([run('A CONTRATADA não será responsável por prejuízos diretos ou indiretos, incluindo lucros cessantes, decorrentes de falhas no monitoramento, salvo em caso de comprovado dolo ou fraude. Responsabilidade limitada a uma mensalidade do contrato vigente.')]),
+
+    clausula('CLÁUSULA SÉTIMA – DA RESCISÃO'),
+    paraJust([run('Carência de 12 (doze) meses. Rescisão antecipada pelo CONTRATANTE implica multa de 50% das mensalidades restantes. Após a carência: notificação por escrito com 30 dias de antecedência, sem multa.')]),
+
+    clausula('CLÁUSULA OITAVA – DA CONFIDENCIALIDADE'),
+    paraJust([run('As partes obrigam-se a manter em sigilo todas as informações obtidas em razão deste contrato.')]),
+
+    clausula('CLÁUSULA NONA – DAS DISPOSIÇÕES GERAIS'),
+    paraJust([run('Este contrato constitui o entendimento integral entre as partes. Modificações somente por escrito e assinadas por ambas.')]),
+
+    clausula('CLÁUSULA DÉCIMA – DA AUSÊNCIA DE RESPONSABILIDADE OPERACIONAL'),
+    alinea('a', 'A CONTRATADA não possui ingerência sobre a operação física da usina fotovoltaica, tampouco responsabilidade sobre normas regulatórias ou de segurança aplicáveis.'),
+    alinea('b', 'A segurança da conexão de rede entre as partes é de total responsabilidade do CONTRATANTE.'),
+
+    clausula('CLÁUSULA DÉCIMA PRIMEIRA – DO FORO'),
+    paraJust([run('Fica eleito o foro da comarca de São Paulo/SP para dirimir quaisquer controvérsias.')]),
+
+    ...clausulaImagens,
+
+    new Paragraph({ spacing: { before: 360, after: 360 }, children: [] }),
+    paraJust([run('E por estarem assim justas e contratadas, firmam o presente instrumento em duas vias de igual teor.')]),
+    new Paragraph({ spacing: { after: 360 }, children: [] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 480 }, children: [run(`${cidade}, ${dataExtensoContrato(data)}.`)] }),
+    tabelaAssinatura(['____________________________', nome, 'CONTRATANTE'],
+                     ['____________________________', 'IDC Engenharia e Instalações LTDA', 'CONTRATADA']),
+  ]}]});
+
+  return await Packer.toBuffer(doc);
+}
+
+// Fechar dropdown ao clicar fora
+document.addEventListener('click', e => {
+  if (!e.target.closest('#ct-busca') && !e.target.closest('#ct-lista-busca')) {
+    const l = document.getElementById('ct-lista-busca');
+    if (l) l.style.display = 'none';
+  }
+});
+// ── FIM MÓDULO CONTRATOS ──
 
 // ── CEP / ENDEREÇO CLIENTE ──
 function mascaraCEP(el) {
