@@ -906,11 +906,22 @@ tbody td:first-child { color: var(--black); font-weight: 500; }
     </div>
     <div class="modal-body">
 
-      <!-- Busca de proposta -->
-      <div class="form-section-title"><i class="ph ph-magnifying-glass"></i> Buscar proposta (opcional)</div>
+      <!-- Busca de cliente ou proposta -->
+      <div class="form-section-title"><i class="ph ph-magnifying-glass"></i> Buscar cliente ou proposta (opcional)</div>
+      <!-- Tabs de busca -->
+      <div style="display:flex;gap:0;margin-bottom:10px;border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+        <button id="proc-tab-cliente" onclick="procTrocaTab('cliente')"
+          style="flex:1;padding:7px;font-size:12px;font-weight:600;border:none;cursor:pointer;background:var(--orange);color:white;">
+          <i class="ph ph-user"></i> Cliente
+        </button>
+        <button id="proc-tab-proposta" onclick="procTrocaTab('proposta')"
+          style="flex:1;padding:7px;font-size:12px;font-weight:600;border:none;cursor:pointer;background:white;color:var(--gray);">
+          <i class="ph ph-file-text"></i> Proposta
+        </button>
+      </div>
       <div class="form-field" style="position:relative;">
-        <input type="text" id="proc-busca" placeholder="Nome do cliente ou nº da proposta..."
-          oninput="buscarPropostaParaProcuracao(this.value)" autocomplete="off"/>
+        <input type="text" id="proc-busca" placeholder="Digite para buscar..."
+          oninput="buscarParaProcuracao(this.value)" autocomplete="off"/>
         <div id="proc-lista-busca" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid var(--border);border-radius:8px;z-index:50;max-height:180px;overflow-y:auto;box-shadow:var(--shadow);"></div>
       </div>
       <div id="proc-cliente-selecionado" style="display:none;margin-bottom:12px;padding:8px 12px;background:#DCFCE7;border-radius:8px;font-size:13px;color:#166534;">
@@ -925,6 +936,17 @@ tbody td:first-child { color: var(--black); font-weight: 500; }
           <input type="text" id="proc-nome" placeholder="Nome completo do cliente"/></div>
         <div class="form-field"><label>CPF *</label>
           <input type="text" id="proc-cpf" placeholder="000.000.000-00" oninput="mascaraCPF(this)" maxlength="14"/></div>
+        <div class="form-field"><label>Profissão</label>
+          <input type="text" id="proc-profissao" placeholder="Ex: empresário, engenheiro..."/></div>
+        <div class="form-field"><label>Estado civil</label>
+          <select id="proc-estado-civil">
+            <option value="solteiro(a)">Solteiro(a)</option>
+            <option value="casado(a)">Casado(a)</option>
+            <option value="divorciado(a)">Divorciado(a)</option>
+            <option value="viúvo(a)">Viúvo(a)</option>
+            <option value="união estável">União estável</option>
+          </select>
+        </div>
       </div>
 
       <!-- Endereço separado -->
@@ -1022,6 +1044,29 @@ tbody td:first-child { color: var(--black); font-weight: 500; }
       <button class="btn btn-primary" onclick="gerarDocxProcuracao()">
         <i class="ph ph-file-doc"></i> Gerar DOCX
       </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     MODAL DOCUMENTOS DO CLIENTE
+     Lista documentos gerados vinculados ao cliente.
+     Download via signed URL temporária do Supabase Storage.
+     ════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-docs-cliente">
+  <div class="modal" style="max-width:600px;">
+    <div class="modal-header">
+      <h3>Documentos — <span id="docs-cliente-nome"></span></h3>
+      <button class="modal-close" onclick="fecharModal('modal-docs-cliente')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="docs-cliente-lista">
+        <div style="text-align:center;color:var(--gray);padding:32px;">Carregando...</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="fecharModal('modal-docs-cliente')">Fechar</button>
     </div>
   </div>
 </div>
@@ -2026,8 +2071,9 @@ function renderTabelaClientes(list) {
       <td>${c.tipo_cliente || '—'}</td>
       <td>—</td>
       <td style="display:flex;gap:6px;">
-        <button class="btn btn-outline btn-sm" onclick="editarCliente('${c.id}')"><i class="ph ph-pencil"></i></button>
-        <button class="btn btn-primary btn-sm" onclick="criarPropostaParaCliente('${c.id}')"><i class="ph ph-file-text"></i></button>
+        <button class="btn btn-outline btn-sm" onclick="editarCliente('${c.id}')" title="Editar"><i class="ph ph-pencil"></i></button>
+        <button class="btn btn-outline btn-sm" onclick="verDocumentosCliente('${c.id}','${c.nome}')" title="Documentos gerados"><i class="ph ph-folder-open"></i></button>
+        <button class="btn btn-primary btn-sm" onclick="criarPropostaParaCliente('${c.id}')" title="Nova proposta"><i class="ph ph-file-text"></i></button>
       </td>
     </tr>`).join('');
 }
@@ -3490,7 +3536,7 @@ let ucCount = 0; // contador de linhas de UC
 
 // ── Abre modal e inicializa ──
 function abrirModalProcuracao() {
-  const campos = ['proc-busca','proc-nome','proc-cpf','proc-rua','proc-numero',
+  const campos = ['proc-busca','proc-nome','proc-cpf','proc-profissao','proc-rua','proc-numero',
     'proc-complemento','proc-bairro','proc-cidade-end','proc-cep',
     'proc-end-instalacao','proc-poderes-adicionais'];
   campos.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
@@ -3632,8 +3678,10 @@ function dataExtensoProcuracao(str) {
 // ── Geração do DOCX ──
 async function gerarDocxProcuracao() {
   // Validação
-  const nome    = document.getElementById('proc-nome').value.trim();
-  const cpf     = document.getElementById('proc-cpf').value.trim();
+  const nome      = document.getElementById('proc-nome').value.trim();
+  const cpf       = document.getElementById('proc-cpf').value.trim();
+  const profissao = document.getElementById('proc-profissao').value.trim();
+  const estCivil  = document.getElementById('proc-estado-civil').value;
   const rua     = document.getElementById('proc-rua').value.trim();
   const numero  = document.getElementById('proc-numero').value.trim();
   const compl   = document.getElementById('proc-complemento').value.trim();
@@ -3749,7 +3797,7 @@ async function gerarDocxProcuracao() {
           new TableRow({ children: [
             celulaLabel('OUTORGANTE'),
             celulaValor([paraJust([
-              run(nome), run(`, brasileira, CPF: ${cpf}, residente e domiciliado(a) na ${enderecoCompleto}`)
+              run(nome), run(`, ${estCivil}${profissao ? ', ' + profissao : ''}, CPF: ${cpf}, residente e domiciliado(a) na ${enderecoCompleto}`)
             ])])
           ]}),
           // OUTORGADOS
@@ -3797,11 +3845,28 @@ async function gerarDocxProcuracao() {
 
   try {
     const buf = await Packer.toBuffer(doc);
+    const nomeArquivo = `Procuracao_${concess.replace(/\s/g,'_')}_${nome.split(' ')[0]}.docx`;
+
+    // Salvar localmente (download imediato)
     saveAs(
       new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }),
-      `Procuracao_${concess.replace(/\s/g,'_')}_${nome.split(' ')[0]}.docx`
+      nomeArquivo
     );
-    toast('✅ Procuração gerada!');
+
+    // Upload para Supabase Storage e registro na tabela documentos_gerados
+    if (token) {
+      try {
+        await uploadDocumentoStorage(buf, nomeArquivo, 'procuracao', procClienteIdSelecionado, null);
+        toast('✅ Procuração gerada e salva no histórico!');
+      } catch(eUp) {
+        // Upload falhou mas o download já aconteceu — avisa sem bloquear
+        console.warn('Upload storage falhou:', eUp);
+        toast('✅ Procuração gerada! (Falha ao salvar no histórico)');
+      }
+    } else {
+      toast('✅ Procuração gerada!');
+    }
+
     fecharModal('modal-procuracao');
   } catch(e) {
     toast('Erro ao gerar DOCX: ' + e.message);
@@ -3817,6 +3882,200 @@ document.addEventListener('click', e => {
   }
 });
 // ── FIM MÓDULO PROCURAÇÃO ──
+
+// ════════════════════════════════════════════════════════
+// MÓDULO DOCUMENTOS — Storage + Vinculação ao cliente
+// Bucket Supabase: 'documentos' (privado)
+// Tabela: documentos_gerados (id, cliente_id, proposta_id, tipo, nome_arquivo, storage_path, url, created_at)
+// Download via signed URL temporária (1 hora)
+// ════════════════════════════════════════════════════════
+
+let procTabAtual = 'cliente'; // tab ativa na busca da procuração
+let procClienteIdSelecionado = null; // cliente vinculado à procuração atual
+
+// ── Troca tab de busca no modal procuração ──
+function procTrocaTab(tab) {
+  procTabAtual = tab;
+  document.getElementById('proc-tab-cliente').style.background  = tab === 'cliente'  ? 'var(--orange)' : 'white';
+  document.getElementById('proc-tab-cliente').style.color       = tab === 'cliente'  ? 'white' : 'var(--gray)';
+  document.getElementById('proc-tab-proposta').style.background = tab === 'proposta' ? 'var(--orange)' : 'white';
+  document.getElementById('proc-tab-proposta').style.color      = tab === 'proposta' ? 'white' : 'var(--gray)';
+  document.getElementById('proc-busca').value = '';
+  document.getElementById('proc-lista-busca').style.display = 'none';
+  document.getElementById('proc-busca').placeholder = tab === 'cliente' ? 'Nome do cliente...' : 'Nome ou nº da proposta...';
+}
+
+// ── Busca unificada (cliente ou proposta) ──
+function buscarParaProcuracao(q) {
+  if (procTabAtual === 'proposta') {
+    buscarPropostaParaProcuracao(q);
+    return;
+  }
+  // Busca por cliente
+  const lista = document.getElementById('proc-lista-busca');
+  if (!q || q.length < 2) { lista.style.display = 'none'; return; }
+  const filtrados = clientesCache.filter(c =>
+    (c.nome||'').toLowerCase().includes(q.toLowerCase())
+  ).slice(0, 6);
+  if (!filtrados.length) { lista.style.display = 'none'; return; }
+  lista.innerHTML = filtrados.map(c => `
+    <div style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px;"
+      onmouseenter="this.style.background='var(--bg)'" onmouseleave="this.style.background=''"
+      onclick="preencherClienteProc('${c.id}')">
+      <strong>${c.nome||'—'}</strong>
+      <span style="color:var(--gray);margin-left:8px;">${c.cidade||''}</span>
+    </div>`).join('');
+  lista.style.display = 'block';
+}
+
+// ── Preenche formulário a partir do cliente ──
+function preencherClienteProc(id) {
+  const c = clientesCache.find(x => x.id === id);
+  if (!c) return;
+  procClienteIdSelecionado = id;
+
+  document.getElementById('proc-nome').value        = c.nome || '';
+  document.getElementById('proc-cpf').value         = c.cpf || '';
+  document.getElementById('proc-rua').value         = c.rua || '';
+  document.getElementById('proc-numero').value      = c.numero || '';
+  document.getElementById('proc-complemento').value = c.complemento || '';
+  document.getElementById('proc-bairro').value      = c.bairro || '';
+  document.getElementById('proc-cidade-end').value  = c.cidade || '';
+  document.getElementById('proc-uf').value          = c.estado || 'SP';
+  document.getElementById('proc-cep').value         = c.cep || '';
+
+  document.getElementById('proc-cliente-nome').textContent = c.nome;
+  document.getElementById('proc-cliente-selecionado').style.display = 'block';
+  document.getElementById('proc-lista-busca').style.display = 'none';
+  document.getElementById('proc-busca').value = '';
+}
+
+// Limpar também reseta o cliente selecionado
+const _limparOriginal = limparPropostaProc;
+function limparPropostaProc() {
+  procClienteIdSelecionado = null;
+  document.getElementById('proc-cliente-selecionado').style.display = 'none';
+  document.getElementById('proc-busca').value = '';
+}
+
+// ── Upload de DOCX para Supabase Storage ──
+// Retorna { path, url } ou lança erro
+async function uploadDocumentoStorage(buffer, nomeArquivo, tipo, clienteId, propostaId) {
+  // 1. Upload para o bucket 'documentos'
+  const path = `${tipo}/${clienteId || 'sem_cliente'}/${Date.now()}_${nomeArquivo}`;
+  const uploadResp = await fetch(
+    `${SUPA_URL}/storage/v1/object/documentos/${path}`,
+    {
+      method: 'POST',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'x-upsert': 'true'
+      },
+      body: buffer
+    }
+  );
+  if (!uploadResp.ok) {
+    const err = await uploadResp.text();
+    throw new Error('Erro no upload: ' + err);
+  }
+
+  // 2. Registrar na tabela documentos_gerados
+  const registro = {
+    tipo,
+    nome_arquivo: nomeArquivo,
+    storage_path: path,
+  };
+  if (clienteId)   registro.cliente_id  = clienteId;
+  if (propostaId)  registro.proposta_id = propostaId;
+
+  await api('POST', '/rest/v1/documentos_gerados', registro);
+
+  return path;
+}
+
+// ── Gera signed URL para download (expira em 1h) ──
+async function gerarSignedUrl(storagePath) {
+  const resp = await fetch(
+    `${SUPA_URL}/storage/v1/object/sign/documentos/${storagePath}`,
+    {
+      method: 'POST',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ expiresIn: 3600 }) // 1 hora
+    }
+  );
+  if (!resp.ok) throw new Error('Erro ao gerar link de download');
+  const data = await resp.json();
+  return SUPA_URL + '/storage/v1' + data.signedURL;
+}
+
+// ── Ver documentos do cliente ──
+async function verDocumentosCliente(clienteId, clienteNome) {
+  document.getElementById('docs-cliente-nome').textContent = clienteNome;
+  document.getElementById('docs-cliente-lista').innerHTML =
+    '<div style="text-align:center;color:var(--gray);padding:32px;">Carregando...</div>';
+  document.getElementById('modal-docs-cliente').classList.add('open');
+
+  try {
+    const docs = await api('GET',
+      `/rest/v1/documentos_gerados?cliente_id=eq.${clienteId}&order=created_at.desc&select=*`
+    );
+
+    if (!docs || docs.length === 0) {
+      document.getElementById('docs-cliente-lista').innerHTML =
+        '<div style="text-align:center;color:var(--gray);padding:32px;"><i class="ph ph-folder-open" style="font-size:36px;display:block;margin-bottom:8px;"></i>Nenhum documento gerado ainda.</div>';
+      return;
+    }
+
+    const tipoLabel = {
+      procuracao: 'Procuração',
+      contrato_instalacao: 'Contrato de Instalação',
+      contrato_monitoramento: 'Contrato de Monitoramento',
+    };
+    const tipoIcone = {
+      procuracao: 'ph-stamp',
+      contrato_instalacao: 'ph-pen-nib',
+      contrato_monitoramento: 'ph-shield-check',
+    };
+
+    document.getElementById('docs-cliente-lista').innerHTML = docs.map(d => `
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);">
+        <i class="ph ${tipoIcone[d.tipo]||'ph-file'}" style="font-size:24px;color:var(--orange);flex-shrink:0;"></i>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:600;font-size:13px;">${tipoLabel[d.tipo]||d.tipo}</div>
+          <div style="font-size:12px;color:var(--gray);">${d.nome_arquivo}</div>
+          <div style="font-size:11px;color:var(--gray);">${new Date(d.created_at).toLocaleDateString('pt-BR')} às ${new Date(d.created_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="baixarDocumento('${d.storage_path}','${d.nome_arquivo}')" title="Download">
+          <i class="ph ph-download-simple"></i>
+        </button>
+      </div>`).join('');
+  } catch(e) {
+    document.getElementById('docs-cliente-lista').innerHTML =
+      `<div style="color:red;padding:16px;">Erro ao carregar documentos: ${e.message}</div>`;
+  }
+}
+
+// ── Download via signed URL ──
+async function baixarDocumento(storagePath, nomeArquivo) {
+  try {
+    toast('Gerando link de download...');
+    const url = await gerarSignedUrl(storagePath);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nomeArquivo;
+    a.click();
+  } catch(e) {
+    toast('Erro ao baixar: ' + e.message);
+  }
+}
+// ── FIM MÓDULO DOCUMENTOS ──
+
 
 // ════════════════════════════════════════════════════════
 // MÓDULO CONTRATOS — Geração de DOCX 100% no browser
@@ -4031,6 +4290,9 @@ async function gerarContratos() {
     toast('Preencha: nome, CPF, endereço e data.'); return;
   }
 
+  // cliente vinculado (se a proposta foi selecionada, tenta pegar o cliente_id dela)
+  const propostaSel = propostasCache.find(p => p.cliente_nome === nome);
+  const ctClienteId = propostaSel?.cliente_id || null;
   const pagamentos = gerarInst ? coletarPagamentos() : [];
   if (gerarInst && pagamentos.length === 0) {
     toast('Adicione ao menos um pagamento com valor.'); return;
@@ -4046,8 +4308,11 @@ async function gerarContratos() {
   if (gerarInst) {
     try {
       const buf = await buildContratoInstalacao({ nome, cpf, rg, endereco, cidade, data, concess, pagamentos });
-      saveAs(new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}),
-        `Contrato_Instalacao_${nome.split(' ')[0]}.docx`);
+      const nomeInst = `Contrato_Instalacao_${nome.split(' ')[0]}.docx`;
+      saveAs(new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}), nomeInst);
+      if (token) {
+        try { await uploadDocumentoStorage(buf, nomeInst, 'contrato_instalacao', ctClienteId || null, null); } catch(e) { console.warn(e); }
+      }
       toast('✅ Contrato de Instalação gerado!');
     } catch(e) { toast('Erro contrato instalação: ' + e.message); console.error(e); }
   }
@@ -4055,8 +4320,11 @@ async function gerarContratos() {
   if (gerarMon) {
     try {
       const buf = await buildContratoMonitoramento({ nome, cpf, endereco, cidade, data });
-      saveAs(new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}),
-        `Contrato_Monitoramento_${nome.split(' ')[0]}.docx`);
+      const nomeMon = `Contrato_Monitoramento_${nome.split(' ')[0]}.docx`;
+      saveAs(new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}), nomeMon);
+      if (token) {
+        try { await uploadDocumentoStorage(buf, nomeMon, 'contrato_monitoramento', ctClienteId || null, null); } catch(e) { console.warn(e); }
+      }
       toast('✅ Contrato de Monitoramento gerado!');
     } catch(e) { toast('Erro contrato monitoramento: ' + e.message); console.error(e); }
   }
