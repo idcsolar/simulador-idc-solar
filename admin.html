@@ -4253,22 +4253,35 @@ function valorPorExtenso(num) {
   return r + ' reais';
 }
 
-// ── Carrega CDNs sob demanda ──
+// ── Carrega libs DOCX sob demanda com fallback ──
+// Tenta unpkg primeiro; se falhar, tenta jsdelivr
+async function carregarScript(urls) {
+  for (const url of urls) {
+    try {
+      await new Promise((res, rej) => {
+        const s = document.createElement('script');
+        s.src = url; s.onload = res; s.onerror = rej;
+        document.head.appendChild(s);
+      });
+      return; // sucesso
+    } catch(e) {
+      console.warn('CDN falhou, tentando próximo:', url);
+    }
+  }
+  throw new Error('Todos os CDNs falharam');
+}
+
 async function carregarDocxLibs() {
-  if (window.docx) return;
+  if (window.docx) return; // já carregado
   await Promise.all([
-    new Promise((res, rej) => {
-      const s = document.createElement('script');
-      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/docx/8.5.0/docx.umd.min.js';
-      s.onload = res; s.onerror = rej;
-      document.head.appendChild(s);
-    }),
-    new Promise((res, rej) => {
-      const s = document.createElement('script');
-      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js';
-      s.onload = res; s.onerror = rej;
-      document.head.appendChild(s);
-    }),
+    carregarScript([
+      'https://unpkg.com/docx@8.2.4/build/index.umd.js',
+      'https://cdn.jsdelivr.net/npm/docx@8.2.4/build/index.umd.js',
+    ]),
+    carregarScript([
+      'https://unpkg.com/file-saver@2.0.5/dist/FileSaver.min.js',
+      'https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js',
+    ]),
   ]);
 }
 
