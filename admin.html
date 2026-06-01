@@ -891,6 +891,141 @@ tbody td:first-child { color: var(--black); font-weight: 500; }
     </div>
   </div>
 </div>
+
+<!-- ════════════════════════════════════════════════════════
+     MODAL PROCURAÇÃO
+     Campos: outorgante, endereço separado, múltiplas UCs (até 5),
+     poderes adicionais, validade, local.
+     Geração 100% browser via jsPDF (CDN sob demanda).
+     ════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-procuracao">
+  <div class="modal" style="max-width:640px;">
+    <div class="modal-header">
+      <h3>Gerar Procuração</h3>
+      <button class="modal-close" onclick="fecharModal('modal-procuracao')">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Busca de proposta -->
+      <div class="form-section-title"><i class="ph ph-magnifying-glass"></i> Buscar proposta (opcional)</div>
+      <div class="form-field" style="position:relative;">
+        <input type="text" id="proc-busca" placeholder="Nome do cliente ou nº da proposta..."
+          oninput="buscarPropostaParaProcuracao(this.value)" autocomplete="off"/>
+        <div id="proc-lista-busca" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid var(--border);border-radius:8px;z-index:50;max-height:180px;overflow-y:auto;box-shadow:var(--shadow);"></div>
+      </div>
+      <div id="proc-cliente-selecionado" style="display:none;margin-bottom:12px;padding:8px 12px;background:#DCFCE7;border-radius:8px;font-size:13px;color:#166534;">
+        <i class="ph ph-check-circle"></i> <span id="proc-cliente-nome"></span>
+        <button onclick="limparPropostaProc()" style="float:right;background:none;border:none;cursor:pointer;color:#166534;font-size:12px;">✕ Limpar</button>
+      </div>
+
+      <!-- Outorgante -->
+      <div class="form-section-title" style="margin-top:8px;"><i class="ph ph-user"></i> Outorgante (cliente)</div>
+      <div class="form-grid">
+        <div class="form-field full"><label>Nome completo *</label>
+          <input type="text" id="proc-nome" placeholder="Nome completo do cliente"/></div>
+        <div class="form-field"><label>CPF *</label>
+          <input type="text" id="proc-cpf" placeholder="000.000.000-00" oninput="mascaraCPF(this)" maxlength="14"/></div>
+      </div>
+
+      <!-- Endereço separado -->
+      <div class="form-section-title" style="margin-top:8px;"><i class="ph ph-house-line"></i> Endereço do outorgante</div>
+      <div class="form-grid">
+        <div class="form-field full"><label>Rua / Avenida *</label>
+          <input type="text" id="proc-rua" placeholder="Ex: Rua das Flores"/></div>
+        <div class="form-field"><label>Número *</label>
+          <input type="text" id="proc-numero" placeholder="Ex: 123"/></div>
+        <div class="form-field"><label>Complemento</label>
+          <input type="text" id="proc-complemento" placeholder="Ex: Ap 41"/></div>
+        <div class="form-field"><label>Bairro *</label>
+          <input type="text" id="proc-bairro" placeholder="Ex: Centro"/></div>
+        <div class="form-field"><label>Cidade *</label>
+          <input type="text" id="proc-cidade-end" placeholder="Ex: São Paulo"/></div>
+        <div class="form-field"><label>UF *</label>
+          <select id="proc-uf">
+            <option>SP</option><option>AC</option><option>AL</option><option>AP</option>
+            <option>AM</option><option>BA</option><option>CE</option><option>DF</option>
+            <option>ES</option><option>GO</option><option>MA</option><option>MT</option>
+            <option>MS</option><option>MG</option><option>PA</option><option>PB</option>
+            <option>PR</option><option>PE</option><option>PI</option><option>RJ</option>
+            <option>RN</option><option>RS</option><option>RO</option><option>RR</option>
+            <option>SC</option><option>SE</option><option>TO</option>
+          </select>
+        </div>
+        <div class="form-field"><label>CEP *</label>
+          <input type="text" id="proc-cep" placeholder="00000-000" maxlength="9" oninput="mascaraCEPProc(this)"/></div>
+      </div>
+
+      <!-- Instalação / UCs -->
+      <div class="form-section-title" style="margin-top:8px;">
+        <i class="ph ph-lightning"></i> Unidades Consumidoras (UC)
+        <button onclick="adicionarUC()" id="proc-btn-add-uc"
+          style="margin-left:auto;background:none;border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer;">
+          <i class="ph ph-plus"></i> Adicionar UC
+        </button>
+      </div>
+      <div id="proc-ucs-lista"></div>
+
+      <!-- Concessionária -->
+      <div class="form-field" style="margin-top:8px;">
+        <label>Concessionária *</label>
+        <select id="proc-concessionaria">
+          <option value="Enel SP">Enel SP</option>
+          <option value="CPFL Paulista">CPFL Paulista</option>
+          <option value="CPFL Piratininga">CPFL Piratininga</option>
+          <option value="Elektro">Elektro</option>
+          <option value="EDP São Paulo">EDP São Paulo</option>
+          <option value="CESP">CESP</option>
+          <option value="Outra">Outra</option>
+        </select>
+      </div>
+
+      <!-- Endereço da instalação -->
+      <div class="form-field">
+        <label>Endereço da instalação <span style="font-size:11px;color:var(--gray);">(se diferente do endereço do cliente)</span></label>
+        <input type="text" id="proc-end-instalacao" placeholder="Rua, nº, bairro, cidade/UF"/>
+      </div>
+
+      <!-- Poderes — checkboxes individuais + campo extra -->
+      <div class="form-section-title" style="margin-top:8px;"><i class="ph ph-list-checks"></i> Poderes</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:13px;">
+          <input type="checkbox" id="proc-poder-1" checked style="width:15px;height:15px;margin-top:2px;accent-color:var(--orange);flex-shrink:0;">
+          <span>Implantação do sistema de energia solar e instalação do relógio bidirecional para aferição da energia injetada na rede (geração de créditos).</span>
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:13px;">
+          <input type="checkbox" id="proc-poder-2" checked style="width:15px;height:15px;margin-top:2px;accent-color:var(--orange);flex-shrink:0;">
+          <span>Solicitação de alteração no padrão / aumento de carga.</span>
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:13px;">
+          <input type="checkbox" id="proc-poder-3" checked style="width:15px;height:15px;margin-top:2px;accent-color:var(--orange);flex-shrink:0;">
+          <span>Solicitação de desligamento e religamento da energia para reforma do padrão.</span>
+        </label>
+      </div>
+      <div class="form-field">
+        <label style="font-size:12px;color:var(--gray);">Poder adicional (opcional)</label>
+        <textarea id="proc-poderes-adicionais" rows="2"
+          placeholder="Descreva um poder específico além dos listados acima..."></textarea>
+      </div>
+
+      <!-- Validade e local -->
+      <div class="form-section-title" style="margin-top:8px;"><i class="ph ph-calendar"></i> Validade</div>
+      <div class="form-grid">
+        <div class="form-field"><label>Válida até *</label>
+          <input type="date" id="proc-validade"/></div>
+        <div class="form-field"><label>Local de assinatura</label>
+          <input type="text" id="proc-local" value="São Paulo"/></div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="fecharModal('modal-procuracao')">Cancelar</button>
+      <button class="btn btn-primary" onclick="gerarDocxProcuracao()">
+        <i class="ph ph-file-doc"></i> Gerar DOCX
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL PAINEL SOLAR -->
 <div class="modal-overlay" id="modal-painel">
   <div class="modal" style="max-width:760px;">
@@ -3336,6 +3471,352 @@ async function deletarVendedor(id, nome) {
 }
 
 
+
+
+// ════════════════════════════════════════════════════════
+// MÓDULO PROCURAÇÃO — Geração de DOCX 100% no browser
+// Usa docx.js (UMD) + FileSaver.js (CDN, carregados sob demanda)
+// Outorgado fixo: Raul Goulart Rahmi Garcia
+// Suporta até 5 UCs por procuração
+// Endereço em campos separados: rua, número, complemento, bairro, cidade, UF, CEP
+// ════════════════════════════════════════════════════════
+
+const OUTORGADO_PROC = {
+  nome:    'Engº Raul Goulart Rahmi Garcia',
+  desc:    ', brasileiro, casado, engenheiro eletricista, RG 44.132.012-0, CPF 366.376.308-02, residente e domiciliado à Rua Dr. Leite Pereira nº 151 Ap 41, Vila Brasilio Machado, CEP 04289-020, São Paulo/SP'
+};
+
+let ucCount = 0; // contador de linhas de UC
+
+// ── Abre modal e inicializa ──
+function abrirModalProcuracao() {
+  const campos = ['proc-busca','proc-nome','proc-cpf','proc-rua','proc-numero',
+    'proc-complemento','proc-bairro','proc-cidade-end','proc-cep',
+    'proc-end-instalacao','proc-poderes-adicionais'];
+  campos.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('proc-local').value = 'São Paulo';
+  document.getElementById('proc-cliente-selecionado').style.display = 'none';
+  document.getElementById('proc-lista-busca').style.display = 'none';
+
+  // Validade padrão: hoje + 6 meses
+  const val = new Date();
+  val.setMonth(val.getMonth() + 6);
+  document.getElementById('proc-validade').value = val.toISOString().split('T')[0];
+
+  // Inicializar com 1 UC
+  document.getElementById('proc-ucs-lista').innerHTML = '';
+  ucCount = 0;
+  adicionarUC();
+
+  document.getElementById('modal-procuracao').classList.add('open');
+}
+
+// ── Adiciona linha de UC (máx 5) ──
+function adicionarUC() {
+  const lista = document.getElementById('proc-ucs-lista');
+  if (lista.children.length >= 5) {
+    toast('Máximo de 5 UCs por procuração.'); return;
+  }
+  const i = ucCount++;
+  const div = document.createElement('div');
+  div.id = `proc-uc-row-${i}`;
+  div.style.cssText = 'display:grid;grid-template-columns:1fr 1.8fr 32px;gap:8px;margin-bottom:8px;align-items:end;';
+  div.innerHTML = `
+    <div class="form-field" style="margin:0;">
+      <label style="font-size:11px;">Nº da UC</label>
+      <input type="text" id="proc-uc-num-${i}" placeholder="Ex: 1234567890"
+        style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;"/>
+    </div>
+    <div class="form-field" style="margin:0;">
+      <label style="font-size:11px;">Endereço desta UC <span style="color:var(--gray);font-size:10px;">(se diferente)</span></label>
+      <input type="text" id="proc-uc-end-${i}" placeholder="Deixe em branco se igual ao principal"
+        style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;"/>
+    </div>
+    <button onclick="removerUC(${i})" title="Remover UC"
+      style="background:none;border:1px solid var(--border);border-radius:8px;padding:7px;cursor:pointer;color:var(--gray);height:36px;margin-bottom:0;">✕</button>
+  `;
+  lista.appendChild(div);
+  // Atualizar visibilidade do botão adicionar
+  document.getElementById('proc-btn-add-uc').style.display = lista.children.length >= 5 ? 'none' : '';
+}
+
+function removerUC(i) {
+  const el = document.getElementById(`proc-uc-row-${i}`);
+  if (el) el.remove();
+  const lista = document.getElementById('proc-ucs-lista');
+  document.getElementById('proc-btn-add-uc').style.display = lista.children.length >= 5 ? 'none' : '';
+}
+
+// ── Coleta UCs do formulário ──
+function coletarUCs() {
+  const lista = document.getElementById('proc-ucs-lista');
+  const rows = lista.querySelectorAll('[id^="proc-uc-row-"]');
+  const ucs = [];
+  rows.forEach(row => {
+    const i = row.id.replace('proc-uc-row-', '');
+    const num = document.getElementById(`proc-uc-num-${i}`)?.value.trim() || '';
+    const end = document.getElementById(`proc-uc-end-${i}`)?.value.trim() || '';
+    if (num) ucs.push({ num, end });
+  });
+  return ucs;
+}
+
+// ── Busca proposta ──
+function buscarPropostaParaProcuracao(q) {
+  const lista = document.getElementById('proc-lista-busca');
+  if (!q || q.length < 2) { lista.style.display = 'none'; return; }
+  const filtradas = propostasCache.filter(p =>
+    (p.cliente_nome||'').toLowerCase().includes(q.toLowerCase()) ||
+    String(p.prop_numero||'').toLowerCase().includes(q.toLowerCase())
+  ).slice(0, 6);
+  if (!filtradas.length) { lista.style.display = 'none'; return; }
+  lista.innerHTML = filtradas.map(p => `
+    <div style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px;"
+      onmouseenter="this.style.background='var(--bg)'" onmouseleave="this.style.background=''"
+      onclick="preencherPropostaProc('${p.id}')">
+      <strong>${p.cliente_nome||'—'}</strong>
+      <span style="color:var(--gray);margin-left:8px;">${p.prop_numero||''} · ${p.concessionaria||''}</span>
+    </div>`).join('');
+  lista.style.display = 'block';
+}
+
+function preencherPropostaProc(id) {
+  const p = propostasCache.find(x => x.id === id);
+  if (!p) return;
+  let dp = {};
+  try { dp = JSON.parse(p.dados_proposta || '{}'); } catch(e) {}
+
+  document.getElementById('proc-nome').value = p.cliente_nome || '';
+  document.getElementById('proc-cpf').value  = dp.cpf || '';
+
+  // Tentar separar cidade/UF
+  const cidadeUF = (p.cliente_cidade || '').split(/[\/\-]/);
+  if (cidadeUF[0]) document.getElementById('proc-cidade-end').value = cidadeUF[0].trim();
+  if (cidadeUF[1]) document.getElementById('proc-uf').value = cidadeUF[1].trim();
+  if (p.concessionaria) document.getElementById('proc-concessionaria').value = p.concessionaria;
+
+  document.getElementById('proc-cliente-nome').textContent = p.cliente_nome + ' — ' + (p.prop_numero||'');
+  document.getElementById('proc-cliente-selecionado').style.display = 'block';
+  document.getElementById('proc-lista-busca').style.display = 'none';
+  document.getElementById('proc-busca').value = '';
+}
+
+function limparPropostaProc() {
+  document.getElementById('proc-cliente-selecionado').style.display = 'none';
+  document.getElementById('proc-busca').value = '';
+}
+
+// ── Máscaras ──
+function mascaraCEPProc(el) {
+  let v = el.value.replace(/\D/g,'');
+  if (v.length > 5) v = v.slice(0,5) + '-' + v.slice(5,8);
+  el.value = v;
+}
+
+function mascaraCPF(el) {
+  let v = el.value.replace(/\D/g,'').substring(0,11);
+  if (v.length > 9)      v = v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
+  else if (v.length > 6) v = v.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
+  else if (v.length > 3) v = v.replace(/(\d{3})(\d{1,3})/, '$1.$2');
+  el.value = v;
+}
+
+// ── Helper data por extenso ──
+function dataExtensoProcuracao(str) {
+  const meses = ['janeiro','fevereiro','março','abril','maio','junho',
+                 'julho','agosto','setembro','outubro','novembro','dezembro'];
+  const d = new Date(str + 'T12:00:00');
+  return `${d.getDate()} de ${meses[d.getMonth()]} de ${d.getFullYear()}`;
+}
+
+// ── Geração do DOCX ──
+async function gerarDocxProcuracao() {
+  // Validação
+  const nome    = document.getElementById('proc-nome').value.trim();
+  const cpf     = document.getElementById('proc-cpf').value.trim();
+  const rua     = document.getElementById('proc-rua').value.trim();
+  const numero  = document.getElementById('proc-numero').value.trim();
+  const compl   = document.getElementById('proc-complemento').value.trim();
+  const bairro  = document.getElementById('proc-bairro').value.trim();
+  const cidade  = document.getElementById('proc-cidade-end').value.trim();
+  const uf      = document.getElementById('proc-uf').value.trim();
+  const cep     = document.getElementById('proc-cep').value.trim();
+  const concess = document.getElementById('proc-concessionaria').value;
+  const endInst = document.getElementById('proc-end-instalacao').value.trim();
+  const poderAdd = document.getElementById('proc-poderes-adicionais').value.trim();
+  const validade = document.getElementById('proc-validade').value;
+  const local   = document.getElementById('proc-local').value.trim() || 'São Paulo';
+  const ucs     = coletarUCs();
+
+  if (!nome || !cpf || !rua || !cidade || !validade) {
+    toast('Preencha: nome, CPF, rua, cidade e validade.'); return;
+  }
+
+  // Monta endereço completo
+  const endParts = [rua + (numero ? ', ' + numero : ''), compl, bairro,
+                    cidade + (uf ? '/' + uf : ''), cep ? 'CEP ' + cep : ''].filter(Boolean);
+  const enderecoCompleto = endParts.join(', ');
+
+  // Monta texto das UCs
+  let ucTexto = '';
+  if (ucs.length === 0) {
+    ucTexto = endInst ? ` no imóvel localizado em ${endInst}` : '';
+  } else if (ucs.length === 1) {
+    const u = ucs[0];
+    ucTexto = ` na UC ${u.num}` + (u.end ? ` (${u.end})` : (endInst ? ` (${endInst})` : ''));
+  } else {
+    const listaUCs = ucs.map((u, i) => {
+      const endU = u.end || (i === 0 && endInst ? endInst : '');
+      return `UC ${u.num}` + (endU ? ` (${endU})` : '');
+    }).join(', ');
+    ucTexto = ` nas seguintes Unidades Consumidoras: ${listaUCs}`;
+  }
+
+  // Poderes — montados a partir dos checkboxes marcados pelo usuário
+  const PODERES_DISPONIVEIS = [
+    `Todos os atos necessários à implantação do Sistema de Energia Elétrica Solar${ucTexto}, em especial para a instalação por parte da ${concess} do relógio bidirecional necessário à aferição da energia injetada na rede a fim de que sejam gerados os créditos correspondentes, de modo a reduzir nessa proporção o valor da conta de luz.`,
+    'Solicitação de alteração no padrão/aumento de carga.',
+    'Solicitação de desligamento e religamento da energia para reforma do padrão.',
+  ];
+  const poderesBase = PODERES_DISPONIVEIS.filter((_, i) =>
+    document.getElementById(`proc-poder-${i + 1}`)?.checked
+  );
+  if (poderAdd) poderesBase.push(poderAdd);
+  if (poderesBase.length === 0) { toast('Selecione ao menos um poder.'); return; }
+
+  // Carregar libs
+  toast('Carregando bibliotecas...');
+  try { await carregarDocxLibs(); } catch(e) { toast('Erro ao carregar biblioteca. Verifique sua conexão.'); return; }
+
+  const {
+    Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+    AlignmentType, WidthType, BorderStyle, LevelFormat
+  } = docx;
+
+  const FONT = 'Arial', SZ = 22; // 11pt
+  const borda = { style: BorderStyle.SINGLE, size: 4, color: 'AAAAAA' };
+  const bordas = { top: borda, bottom: borda, left: borda, right: borda };
+  const COL_LABEL = 2400, COL_VALUE = 7098;
+
+  const run = (text, opts = {}) => new TextRun({ text, font: FONT, size: SZ, ...opts });
+
+  const celulaLabel = (texto) => new TableCell({
+    width: { size: COL_LABEL, type: WidthType.DXA }, borders: bordas,
+    verticalAlign: 'center',
+    margins: { top: 200, bottom: 200, left: 160, right: 160 },
+    children: [new Paragraph({ children: [run(texto, { bold: true })] })]
+  });
+
+  const celulaValor = (paras) => new TableCell({
+    width: { size: COL_VALUE, type: WidthType.DXA }, borders: bordas,
+    margins: { top: 200, bottom: 200, left: 160, right: 160 },
+    children: paras
+  });
+
+  const paraJust = (runs) => new Paragraph({ alignment: AlignmentType.BOTH, children: runs });
+
+  const paraBullet = (texto) => new Paragraph({
+    alignment: AlignmentType.BOTH,
+    numbering: { reference: 'proc-bullets', level: 0 },
+    children: [run(texto)]
+  });
+
+  const dataHoje    = dataExtensoProcuracao(new Date().toISOString().split('T')[0]).toUpperCase();
+  const dataVali    = dataExtensoProcuracao(validade).toUpperCase();
+
+  const doc = new Document({
+    numbering: { config: [{ reference: 'proc-bullets', levels: [{
+      level: 0, format: LevelFormat.BULLET, text: '\u2022', alignment: AlignmentType.LEFT,
+      style: { paragraph: { indent: { left: 360, hanging: 360 } }, run: { font: FONT, size: SZ } }
+    }]}]},
+    sections: [{ properties: {
+      page: { size: { width: 11906, height: 16838 }, margin: { top: 567, right: 1701, bottom: 568, left: 1701 } }
+    }, children: [
+      // Título
+      new Paragraph({
+        alignment: AlignmentType.CENTER, spacing: { after: 300 },
+        children: [run(
+          `PROCURAÇÃO PARA ATUAÇÃO PERANTE A ${concess.toUpperCase()} COM REFERÊNCIA A PROJETO DE ENERGIA ELÉTRICA SOLAR FOTOVOLTAICA`,
+          { bold: true, size: 26 }
+        )]
+      }),
+      // Tabela
+      new Table({
+        width: { size: 9498, type: WidthType.DXA },
+        columnWidths: [COL_LABEL, COL_VALUE],
+        rows: [
+          // OUTORGANTE
+          new TableRow({ children: [
+            celulaLabel('OUTORGANTE'),
+            celulaValor([paraJust([
+              run(nome), run(`, brasileira, CPF: ${cpf}, residente e domiciliado(a) na ${enderecoCompleto}`)
+            ])])
+          ]}),
+          // OUTORGADOS
+          new TableRow({ children: [
+            celulaLabel('OUTORGADOS'),
+            celulaValor([paraJust([
+              run(OUTORGADO_PROC.nome, { bold: true }),
+              run(OUTORGADO_PROC.desc)
+            ])])
+          ]}),
+          // PODERES
+          new TableRow({ children: [
+            celulaLabel('PODERES'),
+            celulaValor([
+              paraJust([run(`Representar a Outorgante perante a ${concess} nas seguintes atividades${ucTexto ? ucTexto.replace(' nas seguintes Unidades Consumidoras','').replace(/^ na UC \d+.*/, '') : ''}:`)]),
+              ...poderesBase.map(p => paraBullet(p))
+            ])
+          ]}),
+          // VALIDADE
+          new TableRow({ children: [
+            celulaLabel('VALIDADE'),
+            celulaValor([paraJust([run(`ESTA PROCURAÇÃO É VÁLIDA ATÉ ${dataVali}.`)])])
+          ]}),
+          // LOCAL E DATA
+          new TableRow({ children: [
+            celulaLabel('LOCAL E DATA'),
+            celulaValor([new Paragraph({ alignment: AlignmentType.CENTER, children: [run(`${local.toUpperCase()}, ${dataHoje}.`)] })])
+          ]}),
+          // ASSINATURA
+          new TableRow({ children: [
+            celulaLabel('ASSINATURA'),
+            celulaValor([
+              new Paragraph({ children: [] }),
+              new Paragraph({ children: [] }),
+              new Paragraph({ children: [] }),
+              new Paragraph({ alignment: AlignmentType.CENTER, children: [run('______________________________________________________')] }),
+              new Paragraph({ alignment: AlignmentType.CENTER, children: [run(nome)] }),
+              new Paragraph({ children: [] }),
+            ])
+          ]}),
+        ]
+      })
+    ]}]
+  });
+
+  try {
+    const buf = await Packer.toBuffer(doc);
+    saveAs(
+      new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }),
+      `Procuracao_${concess.replace(/\s/g,'_')}_${nome.split(' ')[0]}.docx`
+    );
+    toast('✅ Procuração gerada!');
+    fecharModal('modal-procuracao');
+  } catch(e) {
+    toast('Erro ao gerar DOCX: ' + e.message);
+    console.error(e);
+  }
+}
+
+// Fechar dropdown ao clicar fora
+document.addEventListener('click', e => {
+  if (!e.target.closest('#proc-busca') && !e.target.closest('#proc-lista-busca')) {
+    const l = document.getElementById('proc-lista-busca');
+    if (l) l.style.display = 'none';
+  }
+});
+// ── FIM MÓDULO PROCURAÇÃO ──
 
 // ════════════════════════════════════════════════════════
 // MÓDULO CONTRATOS — Geração de DOCX 100% no browser
