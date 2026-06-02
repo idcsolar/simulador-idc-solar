@@ -802,6 +802,25 @@ tbody td:first-child { color: var(--black); font-weight: 500; }
       </div>
     </section>
 
+
+<section id="sec-vendedores" class="section">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+    <div>
+      <h2 style="margin:0;font-size:20px;">Vendedores</h2>
+      <p style="margin:4px 0 0;color:var(--gray);font-size:13px;">Cadastro de vendedores</p>
+    </div>
+    <button class="btn btn-primary" onclick="abrirModalVendedor()">
+      <i class="ph ph-plus"></i> Novo vendedor
+    </button>
+  </div>
+  <div class="card">
+    <table class="tabela-propostas" id="tabela-vendedores">
+      <thead><tr><th>Nome</th><th>Telefone</th><th>E-mail</th><th>Propostas</th><th>Ações</th></tr></thead>
+      <tbody id="tbody-vendedores"><tr><td colspan="5" style="text-align:center;color:var(--gray);">Carregando...</td></tr></tbody>
+    </table>
+  </div>
+</section>
+
   </main>
 </div>
 
@@ -1381,23 +1400,7 @@ tbody td:first-child { color: var(--black); font-weight: 500; }
 </div>
 
 <!-- SEÇÃO VENDEDORES -->
-<section id="sec-vendedores" class="section">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-    <div>
-      <h2 style="margin:0;font-size:20px;">Vendedores</h2>
-      <p style="margin:4px 0 0;color:var(--gray);font-size:13px;">Cadastro de vendedores</p>
-    </div>
-    <button class="btn btn-primary" onclick="abrirModalVendedor()">
-      <i class="ph ph-plus"></i> Novo vendedor
-    </button>
-  </div>
-  <div class="card">
-    <table class="tabela-propostas" id="tabela-vendedores">
-      <thead><tr><th>Nome</th><th>Telefone</th><th>E-mail</th><th>Propostas</th><th>Ações</th></tr></thead>
-      <tbody id="tbody-vendedores"><tr><td colspan="5" style="text-align:center;color:var(--gray);">Carregando...</td></tr></tbody>
-    </table>
-  </div>
-</section>
+
 
 <!-- MODAL CLIENTE -->
 <div class="modal-overlay" id="modal-cliente">
