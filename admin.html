@@ -1105,6 +1105,18 @@ tbody td:first-child { color: var(--black); font-weight: 500; }
         <div class="form-grid">
           <div class="form-field"><label>Marca *</label><input type="text" id="pa-marca" placeholder="Ex: Canadian Solar"/></div>
           <div class="form-field"><label>Modelo *</label><input type="text" id="pa-modelo" placeholder="Ex: CS6R-405MS"/></div>
+          <div class="form-field"><label>Tecnologia</label>
+            <select id="pa-tecnologia">
+              <option value="">Selecione...</option>
+              <option value="Monocristalino">Monocristalino</option>
+              <option value="Policristalino">Policristalino</option>
+              <option value="Monocristalino PERC">Monocristalino PERC</option>
+              <option value="Monocristalino TOPCon">Monocristalino TOPCon</option>
+              <option value="Monocristalino HJT">Monocristalino HJT</option>
+              <option value="Bifacial">Bifacial</option>
+              <option value="Filme Fino">Filme Fino</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -1196,6 +1208,7 @@ tbody td:first-child { color: var(--black); font-weight: 500; }
         <div class="form-grid-3" style="margin-top:12px;">
           <div class="form-field"><label>Potência (kW) *</label><input type="number" id="inv-potencia" placeholder="Ex: 6.0" step="0.1"/></div>
           <div class="form-field"><label>Garantia (anos)</label><input type="number" id="inv-garantia" placeholder="Ex: 5"/></div>
+          <div class="form-field"><label>Número INMETRO</label><input type="text" id="inv-inmetro" placeholder="Ex: 003/2024"/></div>
         </div>
       </div>
 
@@ -2255,6 +2268,7 @@ function abrirModalPainel(painel) {
   document.getElementById('pa-id').value           = p.id || '';
   document.getElementById('pa-marca').value        = p.marca || '';
   document.getElementById('pa-modelo').value       = p.modelo || '';
+  const elTec = document.getElementById('pa-tecnologia'); if(elTec) elTec.value = p.tecnologia || '';
   document.getElementById('pa-potencia').value     = p.potencia_w || '';
   document.getElementById('pa-vmpp').value         = p.tensao_vmpp || '';
   document.getElementById('pa-impp').value         = p.corrente_impp || '';
@@ -2301,6 +2315,7 @@ async function salvarPainel() {
     garantia_geracao_anos:   parseInt(document.getElementById('pa-gar-geracao').value) || null,
     garantia_produto_anos:   parseInt(document.getElementById('pa-gar-produto').value) || null,
     garantia_performance_pct:parseFloat(document.getElementById('pa-gar-perf').value) || null,
+    tecnologia:               document.getElementById('pa-tecnologia').value || null,
     registro_inmetro:        document.getElementById('pa-inmetro').value || null,
     datasheet_url:           document.getElementById('pa-datasheet').value || null,
     inmetro_url:             document.getElementById('pa-inmetro-url').value || null,
@@ -2368,6 +2383,7 @@ function abrirModalInversor(inv) {
   document.getElementById('inv-modelo').value     = i.modelo || '';
   document.getElementById('inv-potencia').value   = i.potencia_kw || '';
   document.getElementById('inv-garantia').value   = i.garantia_anos || '';
+  document.getElementById('inv-inmetro').value    = i.numero_inmetro || '';
   document.getElementById('inv-vin-max').value    = i.tensao_entrada_max || '';
   document.getElementById('inv-mppt-min').value   = i.faixa_mppt_min || '';
   document.getElementById('inv-mppt-max').value   = i.faixa_mppt_max || '';
@@ -2405,6 +2421,7 @@ async function salvarInversor() {
     corrente_saida_nominal:  parseFloat(document.getElementById('inv-iout').value) || null,
     eficiencia_mppt_pct:     parseFloat(document.getElementById('inv-eficiencia').value) || null,
     garantia_anos:           parseInt(document.getElementById('inv-garantia').value) || null,
+    numero_inmetro:          document.getElementById('inv-inmetro').value || null,
     datasheet_url:           document.getElementById('inv-datasheet').value || null,
     inmetro_url:             document.getElementById('inv-inmetro-url').value || null,
   };
