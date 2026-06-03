@@ -230,6 +230,36 @@ footer a{color:rgba(255,255,255,.4);text-decoration:none}
   .cuidamos-grid,.equip-grid,.parceiros-grid,.fin-cards,.premissa-grid{grid-template-columns:1fr}
   .fin-cards{grid-template-columns:1fr 1fr}
   section{padding:60px 20px}
+
+  /* FIX MOBILE: Círculos economia na mesma linha */
+  .economia-suns{gap:8px;align-items:center;flex-wrap:nowrap;justify-content:center}
+  .sun-ring{width:120px;height:120px}
+  .sun-valor{font-size:20px}
+  .sun-seta{font-size:22px;margin-top:0;line-height:1}
+  .sun-titulo{font-size:10px}
+  .sun-sub{font-size:10px}
+
+  /* FIX MOBILE: Equipamentos — coluna única, sem encavalamento */
+  .equip-main-grid{
+    grid-template-columns:1fr !important;
+  }
+  .equip-item{flex-wrap:wrap;gap:2px}
+  .equip-value{word-break:break-word;text-align:right;flex:1;min-width:0}
+
+  /* FIX MOBILE: Gráfico FCL — reduzir pontos bullet */
+  #chart-fluxo-proposta{max-height:220px}
+
+  /* FIX MOBILE: Geral centralizado */
+  .content{padding:0 4px}
+  .nav-inner{padding:0 16px}
+  .capa-inner{padding:60px 20px 40px}
+}
+
+@media(max-width:420px){
+  /* Telas muito pequenas: círculos menores */
+  .sun-ring{width:100px;height:100px}
+  .sun-valor{font-size:17px}
+  .sun-titulo{font-size:9px}
 }
 </style>
 </head>
@@ -558,7 +588,7 @@ footer a{color:rgba(255,255,255,.4);text-decoration:none}
     </div>
     <div class="chart-dark">
       <p style="color:rgba(255,255,255,.4);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px;">Fluxo de Caixa — Sua economia e retorno financeiro*</p>
-      <canvas id="chart-fluxo-proposta" height="200"></canvas>
+      <canvas id="chart-fluxo-proposta" style="max-height:280px"></canvas>
     </div>
     <div class="estimativa-aviso" style="margin-top:16px;">
       <i class="ph ph-info" style="font-size:16px;flex-shrink:0;margin-top:1px;"></i>
@@ -1070,11 +1100,12 @@ function renderChartFluxo(fluxos, fcl, payback) {
   // Linha FCL acumulado com marcador especial no ponto zero
   const paybackAno = payback ? Math.ceil(payback) : null;
   const fclData = fcl.map(v => Math.round(v));
+  const isMobile = window.innerWidth <= 700;
   const pointRadius = fclData.map((v, i) => {
-    if (i === 0) return 3;
+    if (i === 0) return isMobile ? 2 : 3;
     const prev = fclData[i - 1];
-    if (prev < 0 && v >= 0) return 8; // marcador grande no cruzamento do zero
-    return 3;
+    if (prev < 0 && v >= 0) return isMobile ? 5 : 8; // marcador no cruzamento do zero
+    return isMobile ? 2 : 3;
   });
   const pointBg = fclData.map((v, i) => {
     const prev = i > 0 ? fclData[i - 1] : v;
@@ -1212,7 +1243,7 @@ function renderSetups(setupsArr) {
     panel.className = 'setup-panel' + (idx===0?' active':'');
     panel.id = 'panel-' + idx;
     panel.innerHTML = `
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px">
+      <div class="equip-main-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px">
         <div>
           <div class="equip-section">
             <h4>Módulos Fotovoltaicos</h4>
