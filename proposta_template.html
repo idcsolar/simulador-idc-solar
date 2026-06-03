@@ -263,11 +263,12 @@ footer a{color:rgba(255,255,255,.4);text-decoration:none}
   .sun-titulo{font-size:9px}
 }
 
-/* Tabela condições comerciais — scroll horizontal no mobile */
+/* Tabela condições comerciais — responsiva no mobile */
 @media(max-width:700px){
-  .cond-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
-  .cond-table{min-width:480px}
-  .cond-table td,.cond-table th{padding:10px 12px;font-size:12px}
+  .cond-table-wrap{overflow:visible}
+  .cond-table{min-width:unset;width:100%;table-layout:fixed}
+  .cond-table td,.cond-table th{padding:10px 8px;font-size:11px;word-break:break-word;vertical-align:top}
+  .cond-table td:first-child,.cond-table th:first-child{width:90px}
 }
 </style>
 </head>
@@ -1110,15 +1111,15 @@ function renderChartFluxo(fluxos, fcl, payback) {
   const fclData = fcl.map(v => Math.round(v));
   const isMobile = window.innerWidth <= 700;
   const pointRadius = fclData.map((v, i) => {
-    if (i === 0) return isMobile ? 0 : 3;
+    if (i === 0) return isMobile ? 2 : 3;
     const prev = fclData[i - 1];
-    if (prev < 0 && v >= 0) return isMobile ? 6 : 8; // marcador no cruzamento do zero
-    return isMobile ? 0 : 3;
+    if (prev < 0 && v >= 0) return isMobile ? 4 : 8; // marcador payback menor no mobile
+    return isMobile ? 2 : 3;
   });
   const pointHoverRadius = fclData.map((v, i) => {
     if (i === 0) return isMobile ? 3 : 5;
     const prev = fclData[i - 1];
-    if (prev < 0 && v >= 0) return isMobile ? 8 : 10;
+    if (prev < 0 && v >= 0) return isMobile ? 6 : 10;
     return isMobile ? 3 : 5;
   });
   const pointBg = fclData.map((v, i) => {
