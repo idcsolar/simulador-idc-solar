@@ -246,11 +246,12 @@ footer a{color:rgba(255,255,255,.4);text-decoration:none}
   .equip-item{flex-wrap:wrap;gap:2px}
   .equip-value{word-break:break-word;text-align:right;flex:1;min-width:0}
 
-  /* FIX MOBILE: Gráfico FCL — reduzir pontos bullet */
-  #chart-fluxo-proposta{max-height:220px}
+  /* FIX MOBILE: Gráfico FCL */
+  #chart-fluxo-proposta{max-height:240px}
+  .chart-dark{padding:16px}
+  .chart-dark > p{text-align:center}
 
   /* FIX MOBILE: Geral centralizado */
-  .content{padding:0 4px}
   .nav-inner{padding:0 16px}
   .capa-inner{padding:60px 20px 40px}
 }
@@ -260,6 +261,13 @@ footer a{color:rgba(255,255,255,.4);text-decoration:none}
   .sun-ring{width:100px;height:100px}
   .sun-valor{font-size:17px}
   .sun-titulo{font-size:9px}
+}
+
+/* Tabela condições comerciais — scroll horizontal no mobile */
+@media(max-width:700px){
+  .cond-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .cond-table{min-width:480px}
+  .cond-table td,.cond-table th{padding:10px 12px;font-size:12px}
 }
 </style>
 </head>
@@ -1102,10 +1110,16 @@ function renderChartFluxo(fluxos, fcl, payback) {
   const fclData = fcl.map(v => Math.round(v));
   const isMobile = window.innerWidth <= 700;
   const pointRadius = fclData.map((v, i) => {
-    if (i === 0) return isMobile ? 2 : 3;
+    if (i === 0) return isMobile ? 0 : 3;
     const prev = fclData[i - 1];
-    if (prev < 0 && v >= 0) return isMobile ? 5 : 8; // marcador no cruzamento do zero
-    return isMobile ? 2 : 3;
+    if (prev < 0 && v >= 0) return isMobile ? 6 : 8; // marcador no cruzamento do zero
+    return isMobile ? 0 : 3;
+  });
+  const pointHoverRadius = fclData.map((v, i) => {
+    if (i === 0) return isMobile ? 3 : 5;
+    const prev = fclData[i - 1];
+    if (prev < 0 && v >= 0) return isMobile ? 8 : 10;
+    return isMobile ? 3 : 5;
   });
   const pointBg = fclData.map((v, i) => {
     const prev = i > 0 ? fclData[i - 1] : v;
@@ -1140,6 +1154,7 @@ function renderChartFluxo(fluxos, fcl, payback) {
           borderWidth: 2,
           tension: 0.3,
           pointRadius: pointRadius,
+          pointHoverRadius: pointHoverRadius,
           pointBackgroundColor: pointBg,
           pointBorderColor: pointBorder,
           pointBorderWidth: 2,
@@ -1200,7 +1215,7 @@ function renderChartFluxo(fluxos, fcl, payback) {
 
   const info = document.createElement('div');
   info.className = 'chart-info-box';
-  info.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;';
+  info.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;justify-content:center;';
   info.innerHTML = `
     <div style="background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:6px 12px;font-size:12px;color:white;">
       TIR: <strong style="color:#4ade80;">${fin.tir ? (fin.tir*100).toFixed(2)+'%' : '—'}</strong>
@@ -1320,7 +1335,7 @@ function renderCondicoes(setupsArr) {
     `<tr><td>${label}</td>${setupsArr.map(s=>`<td>${fn(s)}</td>`).join('')}</tr>`
   ).join('');
 
-  cont.innerHTML = htmlHeader + htmlRows + '</tbody></table>';
+  cont.innerHTML = '<div class="cond-table-wrap">' + htmlHeader + htmlRows + '</tbody></table></div>';
 }
 
 // ── ASSINATURA ──
