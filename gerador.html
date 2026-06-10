@@ -304,73 +304,52 @@ h1{font-family:'Fraunces',serif;font-size:28px;font-weight:700;margin-bottom:8px
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-header"><div><div class="card-title">Consumo Mensal</div><div class="card-subtitle">Informe os kWh de janeiro a dezembro (ou estimativa)</div></div></div>
+    <div class="card" id="card-ucs">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Unidades Consumidoras</div>
+          <div class="card-subtitle">Adicione todas as UCs do autoconsumo remoto. A soma define o dimensionamento.</div>
+        </div>
+        <button class="btn btn-outline" onclick="adicionarUC()" style="gap:6px;white-space:nowrap;">
+          <i class="ph ph-plus"></i> Adicionar UC
+        </button>
+      </div>
       <div class="card-body">
-        <table class="consumo-table">
-          <thead>
-            <tr>
-              <th>Jan</th><th>Fev</th><th>Mar</th><th>Abr</th><th>Mai</th><th>Jun</th>
-              <th>Jul</th><th>Ago</th><th>Set</th><th>Out</th><th>Nov</th><th>Dez</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr id="consumo-row">
-              <td><input type="number" id="c0" min="0" placeholder="0" oninput="calcularTudo()"/></td>
-              <td><input type="number" id="c1" min="0" placeholder="0" oninput="calcularTudo()"/></td>
-              <td><input type="number" id="c2" min="0" placeholder="0" oninput="calcularTudo()"/></td>
-              <td><input type="number" id="c3" min="0" placeholder="0" oninput="calcularTudo()"/></td>
-              <td><input type="number" id="c4" min="0" placeholder="0" oninput="calcularTudo()"/></td>
-              <td><input type="number" id="c5" min="0" placeholder="0" oninput="calcularTudo()"/></td>
-              <td><input type="number" id="c6" min="0" placeholder="0" oninput="calcularTudo()"/></td>
-              <td><input type="number" id="c7" min="0" placeholder="0" oninput="calcularTudo()"/></td>
-              <td><input type="number" id="c8" min="0" placeholder="0" oninput="calcularTudo()"/></td>
-              <td><input type="number" id="c9" min="0" placeholder="0" oninput="calcularTudo()"/></td>
-              <td><input type="number" id="c10" min="0" placeholder="0" oninput="calcularTudo()"/></td>
-              <td><input type="number" id="c11" min="0" placeholder="0" oninput="calcularTudo()"/></td>
-            </tr>
-          </tbody>
-        </table>
-        <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin-top:12px;">
-  <div class="consumo-media" id="consumo-media">Média mensal: — kWh</div>
-  <div class="form-field" style="flex:1;min-width:200px;margin-bottom:0;">
-    <label>Consumo extra (% de ampliação futura)</label>
-    <input type="number" id="consumo-extra" min="0" max="200" placeholder="0" oninput="calcularTudo()"
-      style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;outline:none;"/>
-    <span style="font-size:11px;color:var(--gray);margin-top:2px;">Ex: 30% adiciona 30% a mais em cada mês</span>
-  </div>
-</div>
+        <!-- UCs renderizadas dinamicamente -->
+        <div id="ucs-container"></div>
 
-        <div style="margin-top:20px;" class="form-grid">
-          <div class="form-field">
-            <label>Tarifa média de energia (R$/kWh)</label>
-            <input type="number" id="param-tarifa" value="0.90" step="0.01" oninput="calcularTudo()"/>
-          </div>
-          <div class="form-field">
-            <label>ICMS (%)</label>
-            <input type="number" id="param-icms" value="18" step="0.1" oninput="calcularTudo()"/>
-          </div>
-          <div class="form-field">
-            <label>Fator de simultaneidade (%)</label>
-            <input type="number" id="param-fs" value="70" step="1" oninput="calcularTudo()"/>
-            <span class="hint">% do consumo que ocorre durante o dia</span>
-          </div>
-          <div class="form-field">
-            <label>Perdas do sistema (%)</label>
-            <input type="number" id="param-perdas" value="20" step="1" oninput="calcularTudo()"/>
-            <span class="hint">Cabeamento, temperatura, sujeira, etc.</span>
-          </div>
-          <div class="form-field">
-            <label>Custo Fio B (R$/kWh)</label>
-            <input type="number" id="param-fiob" value="0.2215" step="0.0001" oninput="calcularTudo()"/>
-            <span class="hint">Custo de disponibilidade não compensado</span>
-          </div>
-          <div class="form-field">
-            <label>Tarifa TE fora ponta (R$/kWh)</label>
-            <input type="number" id="param-te" value="0.2729" step="0.0001" oninput="calcularTudo()"/>
+        <!-- Parâmetros globais do sistema -->
+        <div style="margin-top:24px;padding-top:20px;border-top:1.5px solid var(--border);">
+          <div style="font-size:13px;font-weight:700;color:var(--gray-dark);margin-bottom:14px;">Parâmetros do sistema</div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Perdas do sistema (%)</label>
+              <input type="number" id="param-perdas" value="20" step="1" oninput="calcularTudo()"/>
+              <span class="hint">Cabeamento, temperatura, sujeira, etc.</span>
+            </div>
+            <div class="form-field">
+              <label>Custo Fio B — TUSD (R$/kWh)</label>
+              <input type="number" id="param-fiob" value="0.2215" step="0.0001" oninput="calcularTudo()"/>
+              <span class="hint">Custo de disponibilidade (Wire B)</span>
+            </div>
+            <div class="form-field">
+              <label>Consumo extra (% ampliação futura)</label>
+              <input type="number" id="consumo-extra" min="0" max="200" placeholder="0" oninput="calcularTudo()"/>
+              <span class="hint">Adiciona % a mais no consumo total</span>
+            </div>
           </div>
         </div>
+
+        <div class="consumo-media" id="consumo-media" style="margin-top:12px;">Total consolidado: — kWh/mês</div>
       </div>
+    </div>
+
+    <!-- Campo legado oculto para compatibilidade com getConsumos() -->
+    <div style="display:none">
+      <input type="number" id="param-tarifa" value="0.90"/>
+      <input type="number" id="param-icms" value="18"/>
+      <input type="number" id="param-fs" value="70"/>
+      <input type="number" id="param-te" value="0.2729"/>
     </div>
 
     <!-- RESULTADO DO DIMENSIONAMENTO -->
@@ -644,42 +623,194 @@ document.addEventListener('click', e => {
 });
 
 // ── CÁLCULOS ──
+// ── SISTEMA MULTI-UC ──
+// Cada UC: { id, nome, geradora, conexao, fs, tusd, te, icms, consumos[12], extra }
+let ucs = [];
+
+function adicionarUC(dados) {
+  // dados: opcional, para restaurar de proposta salva
+  const id = Date.now() + Math.random();
+  const uc = dados || {
+    id, nome: 'UC ' + (ucs.length + 1),
+    geradora: ucs.length === 0, // primeira UC é geradora por padrão
+    conexao: 'bifasico',
+    fs: ucs.length === 0 ? 30 : 0, // geradora tem fs>0, beneficiárias 0%
+    tusd: 0.2215,
+    te: 0.2729,
+    icms: 18,
+    consumos: Array(12).fill(0),
+    extra: 0,
+  };
+  if(!dados) uc.id = id;
+  ucs.push(uc);
+  renderUCs();
+  calcularTudo();
+}
+
+function removerUC(idx) {
+  if(ucs.length <= 1) { toast('Precisa de pelo menos 1 UC.'); return; }
+  ucs.splice(idx, 1);
+  // Garantir que sempre haja uma geradora
+  if(!ucs.some(u => u.geradora)) ucs[0].geradora = true;
+  renderUCs();
+  calcularTudo();
+}
+
+function setGeradora(idx) {
+  // Só uma UC pode ser geradora
+  ucs.forEach((u, i) => {
+    u.geradora = (i === idx);
+    if(i !== idx && u.fs === 0 && i === idx) u.fs = 0;
+  });
+  renderUCs();
+  calcularTudo();
+}
+
+function replicarTarifas(fromIdx) {
+  // Copia TUSD, TE, ICMS da UC fromIdx para todas as outras
+  const src = ucs[fromIdx];
+  if(!src) return;
+  ucs.forEach((u, i) => {
+    if(i !== fromIdx) {
+      u.tusd = src.tusd;
+      u.te   = src.te;
+      u.icms = src.icms;
+    }
+  });
+  toast('Tarifas replicadas para todas as UCs.');
+  renderUCs();
+  calcularTudo();
+}
+
+function renderUCs() {
+  const cont = document.getElementById('ucs-container');
+  if(!cont) return;
+
+  // Calcular rateio sugerido proporcional ao consumo de cada UC
+  const mediasUC = ucs.map(u => {
+    const extra = 1 + (u.extra||0)/100;
+    return u.consumos.reduce((a,b)=>a+b,0)/12 * extra;
+  });
+  const totalMedia = mediasUC.reduce((a,b)=>a+b,0);
+  const rateioSugerido = mediasUC.map(m => totalMedia > 0 ? (m/totalMedia*100) : 0);
+
+  cont.innerHTML = ucs.map((uc, idx) => `
+    <div style="border:1.5px solid ${uc.geradora ? 'var(--orange)' : 'var(--border)'};border-radius:12px;padding:16px;margin-bottom:16px;background:${uc.geradora ? 'rgba(232,146,10,.04)' : 'var(--bg)'};">
+
+      <!-- Cabeçalho UC -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+        <input type="text" value="${uc.nome}" placeholder="Nome da UC"
+          style="font-weight:700;font-size:14px;border:none;border-bottom:1.5px solid var(--border);background:transparent;padding:2px 6px;font-family:inherit;outline:none;flex:1;min-width:120px;"
+          oninput="ucs[${idx}].nome=this.value;document.querySelectorAll('.uc-nome-badge')[${idx}].textContent=this.value"/>
+        ${uc.geradora
+          ? `<span style="background:var(--orange);color:white;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;">⚡ GERADORA</span>`
+          : `<button class="btn btn-outline" style="font-size:11px;padding:4px 10px;" onclick="setGeradora(${idx})">Definir como geradora</button>`}
+        ${ucs.length > 1 ? `<button onclick="removerUC(${idx})" style="background:none;border:none;cursor:pointer;color:var(--gray);font-size:18px;padding:0 4px;" title="Remover UC"><i class="ph ph-trash"></i></button>` : ''}
+      </div>
+
+      <!-- Consumos 12 meses -->
+      <div style="overflow-x:auto;margin-bottom:12px;">
+        <table class="consumo-table" style="min-width:600px;">
+          <thead><tr>
+            <th>Jan</th><th>Fev</th><th>Mar</th><th>Abr</th><th>Mai</th><th>Jun</th>
+            <th>Jul</th><th>Ago</th><th>Set</th><th>Out</th><th>Nov</th><th>Dez</th>
+          </tr></thead>
+          <tbody><tr>
+            ${uc.consumos.map((v,m) => `<td><input type="number" min="0" placeholder="0" value="${v||''}"
+              style="width:52px;" oninput="ucs[${idx}].consumos[${m}]=parseFloat(this.value)||0;calcularTudo()"/></td>`).join('')}
+          </tr></tbody>
+        </table>
+      </div>
+
+      <!-- Parâmetros da UC -->
+      <div class="form-grid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;">
+        <div class="form-field" style="margin-bottom:0;">
+          <label>Tipo de entrada</label>
+          <select onchange="ucs[${idx}].conexao=this.value;calcularTudo()">
+            <option value="monofasico" ${uc.conexao==='monofasico'?'selected':''}>Monofásico (30 kWh mín.)</option>
+            <option value="bifasico"   ${uc.conexao==='bifasico'  ?'selected':''}>Bifásico (50 kWh mín.)</option>
+            <option value="trifasico"  ${uc.conexao==='trifasico' ?'selected':''}>Trifásico (100 kWh mín.)</option>
+          </select>
+        </div>
+        <div class="form-field" style="margin-bottom:0;">
+          <label>Fator de simultaneidade (%)</label>
+          <input type="number" min="0" max="100" step="1" value="${uc.fs}"
+            oninput="ucs[${idx}].fs=parseFloat(this.value)||0;calcularTudo()"
+            style="border-color:${uc.geradora?'var(--orange)':'var(--border)'}"/>
+          <span class="hint">${uc.fs===0?'Só recebe créditos (0% = não gera)':'% consumido diretamente'}</span>
+        </div>
+        <div class="form-field" style="margin-bottom:0;">
+          <label>TUSD (R$/kWh)</label>
+          <input type="number" step="0.0001" value="${uc.tusd}"
+            oninput="ucs[${idx}].tusd=parseFloat(this.value)||0;calcularTudo()"/>
+        </div>
+        <div class="form-field" style="margin-bottom:0;">
+          <label>TE (R$/kWh)</label>
+          <input type="number" step="0.0001" value="${uc.te}"
+            oninput="ucs[${idx}].te=parseFloat(this.value)||0;calcularTudo()"/>
+        </div>
+        <div class="form-field" style="margin-bottom:0;">
+          <label>ICMS (%)</label>
+          <input type="number" step="0.1" value="${uc.icms}"
+            oninput="ucs[${idx}].icms=parseFloat(this.value)||0;calcularTudo()"/>
+        </div>
+        <div class="form-field" style="margin-bottom:0;">
+          <label>Extra ampliação (%)</label>
+          <input type="number" min="0" step="1" value="${uc.extra||0}"
+            oninput="ucs[${idx}].extra=parseFloat(this.value)||0;calcularTudo()"/>
+        </div>
+      </div>
+
+      <!-- Rateio sugerido + botão replicar tarifas -->
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:10px;">
+        <div style="font-size:12px;color:var(--gray);">
+          Rateio sugerido: <strong style="color:var(--orange-dark);">${rateioSugerido[idx].toFixed(1)}%</strong>
+          &nbsp;·&nbsp; Média: <strong><span class="uc-nome-badge" style="display:none">${uc.nome}</span>${(mediasUC[idx]).toFixed(0)} kWh/mês</strong>
+        </div>
+        <button class="btn btn-outline" style="font-size:11px;padding:4px 12px;" onclick="replicarTarifas(${idx})">
+          <i class="ph ph-copy"></i> Replicar tarifas para todas
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
 function getConsumos() {
-  return MESES.map((_,i) => parseFloat(document.getElementById('c'+i).value)||0);
+  // Retorna soma mensal de todas as UCs (para compatibilidade com o restante do código)
+  const extra = parseFloat(document.getElementById('consumo-extra')?.value)||0;
+  const totais = Array(12).fill(0);
+  ucs.forEach(u => {
+    const ucExtra = 1 + (u.extra||0)/100;
+    u.consumos.forEach((v,m) => { totais[m] += (v||0) * ucExtra; });
+  });
+  const globalExtra = 1 + extra/100;
+  return totais.map(v => v * globalExtra);
 }
 
 function calcularTudo() {
   const consumos = getConsumos();
-  const extraPct = parseFloat(document.getElementById('consumo-extra')?.value)||0;
-  // Aplica % de extra proporcional a cada mês
-  const consumosTotal = consumos.map(v => v * (1 + extraPct/100));
-  const media = consumosTotal.reduce((a,b)=>a+b,0)/12;
-  const mediaOriginal = consumos.reduce((a,b)=>a+b,0)/12;
+  const media = consumos.reduce((a,b)=>a+b,0)/12;
 
-  let txt = `Média mensal: ${media.toFixed(0)} kWh/mês`;
-  if(extraPct > 0) txt += ` (inclui +${extraPct}% de ampliação → +${(media-mediaOriginal).toFixed(0)} kWh/mês)`;
-  document.getElementById('consumo-media').textContent = txt;
+  // Atualizar texto consolidado
+  const el = document.getElementById('consumo-media');
+  if(el) el.textContent = `Total consolidado: ${media.toFixed(0)} kWh/mês (${ucs.length} UC${ucs.length>1?'s':''})`;
 
-  if(media > 0 && hspSelecionado) calcularDimensionamento(consumosTotal, media);
+  if(media > 0 && hspSelecionado) calcularDimensionamento(consumos, media);
   calcularFinanceiro();
 }
 
 function calcularDimensionamento(consumos, media) {
   const perdas = parseFloat(document.getElementById('param-perdas').value)/100 || 0.2;
-  const tarifa = parseFloat(document.getElementById('param-tarifa').value) || 0.90;
-  const fs = parseFloat(document.getElementById('param-fs').value)/100 || 0.70;
-  const fiob = parseFloat(document.getElementById('param-fiob').value) || 0.2215;
-  const conexao = document.getElementById('proj-conexao').value;
-  const minKwh = conexao==='monofasico'?30:conexao==='bifasico'?50:100;
+  const fiob   = parseFloat(document.getElementById('param-fiob').value) || 0.2215;
   const hspMedio = hspSelecionado.reduce((a,b)=>a+b,0)/12;
 
-  // kWp necessário
+  // kWp necessário pelo consumo total de todas as UCs
   const kwp = media / (hspMedio * 30 * (1-perdas));
 
-  // Geração por mês: qtd_paineis * pot_painel * dias * hsp / 1000 * (1-perdas)
-  const geracaoMes = hspSelecionado.map((h,i) => {
-    return kwp * 1000 * DIAS_MES[i] * h / 1000 * (1-perdas);
-  });
+  // Geração por mês
+  const geracaoMes = hspSelecionado.map((h,i) =>
+    kwp * 1000 * DIAS_MES[i] * h / 1000 * (1-perdas)
+  );
   const geracaoMedia = geracaoMes.reduce((a,b)=>a+b,0)/12;
 
   // Percentual do Fio B cobrado (Lei 14.300/2022 — GD II pós jan/2023)
@@ -691,38 +822,84 @@ function calcularDimensionamento(consumos, media) {
                   anoAtual === 2027 ? 0.75 :
                   anoAtual === 2028 ? 0.90 : 1.00;
 
-  const contaAtual = media * tarifa;
+  // ── Cálculo por UC com parâmetros individuais ──
+  // Distribuição de geração proporcional ao consumo de cada UC
+  const mediasUC = ucs.map(u => {
+    const ucExtra = 1 + (u.extra||0)/100;
+    return u.consumos.reduce((a,b)=>a+b,0)/12 * ucExtra;
+  });
+  const totalMediaUC = mediasUC.reduce((a,b)=>a+b,0) || 1;
 
-  // Energia instantânea (consumida diretamente, sem passar pela rede)
-  const energiaInstantanea = Math.min(geracaoMedia * fs, media);
-  // Energia compensada via créditos na rede
-  const energiaCompensada  = Math.min(
-    Math.max(0, geracaoMedia - energiaInstantanea),
-    Math.max(0, media - energiaInstantanea - minKwh)
-  );
-  const consumoResidual = Math.max(0, media - energiaInstantanea - energiaCompensada);
+  let contaAtualTotal  = 0;
+  let contaDepoisTotal = 0;
 
-  // Conta com solar: mínimo + Fio B escalonado + residual
-  const custoMinimo   = minKwh * fiob;
-  const custoFioB     = energiaCompensada * fiob * pctFioB;
-  const custoResidual = consumoResidual * tarifa;
-  const contaDepois   = Math.max(custoMinimo, custoMinimo + custoFioB + custoResidual);
+  ucs.forEach((uc, i) => {
+    const mediaUC    = mediasUC[i];
+    const geracaoUC  = geracaoMedia * (mediaUC / totalMediaUC); // geração alocada proporcional
+    const tarifaUC   = (uc.tusd||0) + (uc.te||0);
+    const icmsUC     = (uc.icms||0)/100;
+    const tarifaBruta = tarifaUC / (1 - icmsUC); // tarifa cheia com ICMS
+    const minKwh     = uc.conexao==='monofasico' ? 30 : uc.conexao==='trifasico' ? 100 : 50;
+    const fs         = (uc.fs||0)/100;
 
-  const economia = contaAtual - contaDepois;
-  const reducao  = economia / contaAtual * 100;
+    // Conta atual (tarifa cheia com ICMS)
+    contaAtualTotal += mediaUC * tarifaBruta;
+
+    // Energia consumida diretamente (sem rede) = fs% da geração alocada
+    // — desconto integral (TUSD + TE + ICMS economizados)
+    const energiaInstantanea = Math.min(geracaoUC * fs, mediaUC);
+
+    // Energia compensada via crédito (passa pela rede, ICMS incide sobre consumo)
+    // Créditos cobrem TUSD + TE, mas ICMS é cobrado sobre o consumo total >= mínimo
+    const energiaCredito = Math.min(
+      Math.max(0, geracaoUC - energiaInstantanea),
+      Math.max(0, mediaUC - energiaInstantanea - minKwh)
+    );
+
+    const consumoResidual = Math.max(0, mediaUC - energiaInstantanea - energiaCredito);
+
+    // Custo mínimo (custo de disponibilidade — TUSD+TE sem ICMS sobre o mínimo)
+    const custoMinimo   = minKwh * (uc.tusd||0.2215);
+    // Fio B sobre energia compensada (escalonado pela Lei 14.300)
+    const custoFioB     = energiaCredito * (uc.tusd||0.2215) * pctFioB;
+    // ICMS sobre consumo residual + mínimo (crédito não elimina o ICMS base)
+    const custoResidual = consumoResidual * tarifaBruta;
+    // ICMS sobre energia compensada (incide mesmo com crédito)
+    const icmsCompensado = energiaCredito * tarifaBruta * icmsUC;
+
+    const contaUC = Math.max(custoMinimo, custoMinimo + custoFioB + custoResidual + icmsCompensado);
+    contaDepoisTotal += contaUC;
+  });
+
+  // Para retrocâmpatibilidade: usar tarifa média ponderada para calcularFinanceiro
+  const tarifaMedia = ucs.reduce((acc, u) => {
+    const mediaUC = mediasUC[ucs.indexOf(u)];
+    const icmsUC = (u.icms||0)/100;
+    const tb = ((u.tusd||0) + (u.te||0)) / (1 - icmsUC);
+    return acc + tb * (mediaUC/totalMediaUC);
+  }, 0);
+
+  const economia = contaAtualTotal - contaDepoisTotal;
 
   document.getElementById('dimensionamento-result').style.display='block';
-
   const kwpEl = document.getElementById('res-kwp');
-  if(kwpEl) { kwpEl.textContent = kwp.toFixed(2)+' kWp'; }
-
+  if(kwpEl) kwpEl.textContent = kwp.toFixed(2)+' kWp';
   document.getElementById('res-media').textContent = media.toFixed(0)+' kWh';
   document.getElementById('res-geracao').textContent = geracaoMedia.toFixed(0)+' kWh';
   document.getElementById('res-economia-mes').textContent = 'R$ '+economia.toFixed(2).replace('.',',');
-  document.getElementById('res-conta-depois').textContent = 'R$ '+contaDepois.toFixed(2).replace('.',',');
+  document.getElementById('res-conta-depois').textContent = 'R$ '+contaDepoisTotal.toFixed(2).replace('.',',');
 
   renderChartGeracao(geracaoMes, consumos);
-  window._calc = { kwp, geracaoMes, geracaoMedia, contaAtual, contaDepois, economia, media, tarifa, fiob, minKwh, hspMedio };
+
+  window._calc = {
+    kwp, geracaoMes, geracaoMedia,
+    contaAtual: contaAtualTotal,
+    contaDepois: contaDepoisTotal,
+    economia, media,
+    tarifa: tarifaMedia,
+    fiob, minKwh: 50, hspMedio,
+    ucs: ucs.map((u,i) => ({ ...u, geracaoAlocada: geracaoMedia * (mediasUC[i]/totalMediaUC), mediaKwh: mediasUC[i] }))
+  };
 
   // Atualiza % de atendimento nos setups
   setups.forEach((_,i) => atualizarAtendimentoSetup(i));
@@ -1507,7 +1684,8 @@ async function gerarPropostaFinal() {
   if(!fone || fone.replace(/\D/g,'').length < 10) erros.push('WhatsApp do cliente (Etapa 1)');
   if(!hspSelecionado) erros.push('Cidade / HSP (Etapa 2)');
   const consumos = getConsumos();
-  if(consumos.every(v => v === 0)) erros.push('Consumo mensal (Etapa 2)');
+  if(consumos.every(v => v === 0)) erros.push('Consumo mensal das UCs (Etapa 2)');
+  if(!ucs.some(u => u.geradora)) erros.push('Definir uma UC como geradora (Etapa 2)');
   if(!setups.length) erros.push('Pelo menos 1 setup (Etapa 3)');
   const s0 = setups[0] || {};
   if(!s0.qtdModulos || !s0.potModulo) erros.push('Quantidade e potência dos painéis (Etapa 3)');
@@ -1564,11 +1742,12 @@ async function gerarPropostaFinal() {
       fluxos:  fin.fluxos  || [],
       fcl:     fin.fcl     || [],
     },
+    ucs: ucs.map(u => ({...u})),
     params: {
-      tarifa:            parseFloat(document.getElementById('param-tarifa').value) || 0.90,
-      icms:              parseFloat(document.getElementById('param-icms').value)   || 18,
+      tarifa:            (window._calc && window._calc.tarifa) || 0.90,
+      icms:              ucs[0]?.icms || 18,
       perdas:            parseFloat(document.getElementById('param-perdas').value) || 20,
-      fs:                parseFloat(document.getElementById('param-fs').value)     || 70,
+      fs:                ucs[0]?.fs || 70,
       hsp:               cidadeSelecionada,
       consumo_extra_pct: parseFloat(document.getElementById('consumo-extra')?.value) || 0,
       infE:  parseFloat(document.getElementById('fin-inf-energia').value) || 10,
@@ -1808,6 +1987,7 @@ function novaPropostaCompleto() {
   const modal = document.getElementById('modal-sucesso-proposta');
   if(modal) modal.remove();
   setups = [];
+  ucs = []; adicionarUC();
   window._calc = null;
   window._financeiro = null;
   cidadeSelecionada = null;
@@ -1899,6 +2079,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
   if(elRevisao) elRevisao.value = '0';
 
   adicionarSetup();
+  // Inicializar com 1 UC padrão (autoconsumo remoto)
+  ucs = [];
+  adicionarUC();
   carregarEquipamentosDB();
 
   // Verifica modo de edição
@@ -1966,11 +2149,26 @@ function carregarPropostaParaEdicao(p, editarId) {
     sp('fin-vida',       dados.params.vida);
   }
 
-  if(dados.calc && dados.calc.consumoMes) {
-    dados.calc.consumoMes.forEach((v,i) => {
-      const el = document.getElementById('c'+i); if(el) el.value = v||'';
+  // Restaurar UCs salvas
+  if(dados.ucs && dados.ucs.length) {
+    ucs = [];
+    dados.ucs.forEach(u => adicionarUC(u));
+  } else if(dados.calc && dados.calc.consumoMes) {
+    // Retrocompatibilidade: proposta antiga sem multi-UC
+    ucs = [];
+    adicionarUC({
+      id: Date.now(), nome: 'UC Principal', geradora: true,
+      conexao: dados.params?.conexao || 'bifasico',
+      fs: dados.params?.fs || 70,
+      tusd: dados.params?.fiob || 0.2215,
+      te: dados.params?.te || 0.2729,
+      icms: dados.params?.icms || 18,
+      consumos: dados.calc.consumoMes,
+      extra: dados.params?.consumo_extra_pct || 0,
     });
   }
+
+  // consumoMes restaurado via ucs
 
   const banner = document.createElement('div');
   banner.style.cssText = 'background:var(--orange-light);border:1px solid var(--orange);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--orange-dark);display:flex;align-items:center;gap:8px;';
