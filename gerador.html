@@ -328,9 +328,9 @@ h1{font-family:'Fraunces',serif;font-size:28px;font-weight:700;margin-bottom:8px
               <span class="hint">Cabeamento, temperatura, sujeira, etc.</span>
             </div>
             <div class="form-field">
-              <label>Custo Fio B — TUSD (R$/kWh)</label>
+              <label>TUSD de Injeção (R$/kWh)</label>
               <input type="number" id="param-fiob" value="0.2215" step="0.0001" oninput="calcularTudo()"/>
-              <span class="hint">Custo de disponibilidade (Wire B)</span>
+              <span class="hint">Tarifa TUSD paga como crédito pela distribuidora (menor que TUSD consumo)</span>
             </div>
             <div class="form-field">
               <label>Consumo extra (% ampliação futura)</label>
@@ -689,7 +689,7 @@ function renderUCs() {
   // Calcular rateio sugerido proporcional ao consumo de cada UC
   const mediasUC = ucs.map(u => {
     const extra = 1 + (u.extra||0)/100;
-    return u.consumos.reduce((a,b)=>a+b,0)/12 * extra;
+    return u.consumos.reduce((a,b)=>a+(parseFloat(b)||0),0)/12 * extra;
   });
   const totalMedia = mediasUC.reduce((a,b)=>a+b,0);
   const rateioSugerido = mediasUC.map(m => totalMedia > 0 ? (m/totalMedia*100) : 0);
@@ -833,49 +833,67 @@ function calcularDimensionamento(consumos, media) {
   let contaAtualTotal  = 0;
   let contaDepoisTotal = 0;
 
+  // ── Passo 1: autoconsumo instantâneo na UC geradora ──
+  // FS% da geração é consumido diretamente na geradora (sem passar pela rede)
+  const ucGeradora    = ucs.find(u => u.geradora) || ucs[0];
+  const mediaGeradora = mediasUC[ucs.indexOf(ucGeradora)];
+  const autoconsumo   = mediaGeradora * ((ucGeradora.fs||0)/100); // FS% do consumo da geradora é instantâneo (gratuito)
+  const injetado      = geracaoMedia - autoconsumo; // energia injetada na rede como crédito
+
+  // ── Passo 2: distribuir créditos proporcionalmente ao consumo de cada UC ──
+  const creditosUC = mediasUC.map(m => injetado * (m / totalMediaUC));
+
+  // ── Passo 3: calcular conta de cada UC ──
+  // MODELO CONFIRMADO pelas faturas reais (mar/2026):
+  // - Tarifas TUSD e TE informadas já incluem ICMS embutido
+  // - Conta = consumo×TUSD - compensado×(TUSD-FioB) + consumo×TE - compensado×TE
+  //         = (consumo-compensado)×(TUSD+TE) + compensado×FioB
+  // - Custo mínimo = minKwh × (TUSD+TE) [tarifa cheia sobre o mínimo]
+  // - Na geradora: autoconsumo instantâneo economiza TUSD+TE inteiros
+
   ucs.forEach((uc, i) => {
-    const mediaUC    = mediasUC[i];
-    const geracaoUC  = geracaoMedia * (mediaUC / totalMediaUC); // geração alocada proporcional
-    const tarifaUC   = (uc.tusd||0) + (uc.te||0);
-    const icmsUC     = (uc.icms||0)/100;
-    const tarifaBruta = tarifaUC / (1 - icmsUC); // tarifa cheia com ICMS
-    const minKwh     = uc.conexao==='monofasico' ? 30 : uc.conexao==='trifasico' ? 100 : 50;
-    const fs         = (uc.fs||0)/100;
+    const mediaUC  = mediasUC[i];
+    const tusdUC   = uc.tusd || 0.2215;
+    const teUC     = uc.te   || 0.2729;
+    const tarifaUC = tusdUC + teUC;                         // tarifa total (já com ICMS)
+    // TUSD de injeção = valor creditado pela distribuidora (< TUSD consumo)
+    const tusdInj  = parseFloat(document.getElementById('param-fiob')?.value) || 0.2215;
+    const fiobDif  = Math.max(0, tusdUC - tusdInj); // diferença = custo que fica para a distribuidora
+    const minKwh   = uc.conexao==='monofasico' ? 30 : uc.conexao==='trifasico' ? 100 : 50;
 
-    // Conta atual (tarifa cheia com ICMS)
-    contaAtualTotal += mediaUC * tarifaBruta;
+    // Conta atual (sem solar)
+    contaAtualTotal += mediaUC * tarifaUC;
 
-    // Energia consumida diretamente (sem rede) = fs% da geração alocada
-    // — desconto integral (TUSD + TE + ICMS economizados)
-    const energiaInstantanea = Math.min(geracaoUC * fs, mediaUC);
+    // Autoconsumo instantâneo (só na geradora) — economiza tarifa inteira
+    const inst = uc.geradora ? autoconsumo : 0;
 
-    // Energia compensada via crédito (passa pela rede, ICMS incide sobre consumo)
-    // Créditos cobrem TUSD + TE, mas ICMS é cobrado sobre o consumo total >= mínimo
-    const energiaCredito = Math.min(
-      Math.max(0, geracaoUC - energiaInstantanea),
-      Math.max(0, mediaUC - energiaInstantanea - minKwh)
-    );
+    // Crédito disponível para esta UC
+    const creditoDisp    = creditosUC[i];
+    const maxCompensavel = Math.max(0, mediaUC - inst - minKwh);
+    const creditoUsado   = Math.min(creditoDisp, maxCompensavel);
 
-    const consumoResidual = Math.max(0, mediaUC - energiaInstantanea - energiaCredito);
+    // Consumo residual após autoconsumo + compensação
+    const residual = Math.max(0, mediaUC - inst - creditoUsado);
 
-    // Custo mínimo (custo de disponibilidade — TUSD+TE sem ICMS sobre o mínimo)
-    const custoMinimo   = minKwh * (uc.tusd||0.2215);
-    // Fio B sobre energia compensada (escalonado pela Lei 14.300)
-    const custoFioB     = energiaCredito * (uc.tusd||0.2215) * pctFioB;
-    // ICMS sobre consumo residual + mínimo (crédito não elimina o ICMS base)
-    const custoResidual = consumoResidual * tarifaBruta;
-    // ICMS sobre energia compensada (incide mesmo com crédito)
-    const icmsCompensado = energiaCredito * tarifaBruta * icmsUC;
-
-    const contaUC = Math.max(custoMinimo, custoMinimo + custoFioB + custoResidual + icmsCompensado);
+    // ── Conta depois (modelo confirmado pelas faturas reais) ──
+    // Fórmula: conta = (consumo - compensado) × (TUSD+TE) + compensado × FioB_diferença
+    // onde FioB_diferença = TUSD_consumo - TUSD_injeção (escalonado pela Lei 14.300)
+    // TE injetada = TE fornecida (crédito integral, sem desconto)
+    // Conta depois:
+    // residual já inclui o mínimo (maxCompensavel = media - inst - minKwh)
+    // então: conta = residual×tarifa + creditoUsado×FioB×pctFioB
+    // mínimo garantido pois residual >= minKwh sempre
+    const custoMin  = minKwh * tarifaUC;
+    const custoFioB = creditoUsado * fiobDif * pctFioB;
+    const custoRes  = residual * tarifaUC;
+    const contaUC   = Math.max(custoMin, custoFioB + custoRes);
     contaDepoisTotal += contaUC;
   });
 
   // Para retrocâmpatibilidade: usar tarifa média ponderada para calcularFinanceiro
   const tarifaMedia = ucs.reduce((acc, u) => {
     const mediaUC = mediasUC[ucs.indexOf(u)];
-    const icmsUC = (u.icms||0)/100;
-    const tb = ((u.tusd||0) + (u.te||0)) / (1 - icmsUC);
+    const tb = ((u.tusd||0) + (u.te||0)); // tarifas já incluem ICMS
     return acc + tb * (mediaUC/totalMediaUC);
   }, 0);
 
@@ -898,7 +916,13 @@ function calcularDimensionamento(consumos, media) {
     economia, media,
     tarifa: tarifaMedia,
     fiob, minKwh: 50, hspMedio,
-    ucs: ucs.map((u,i) => ({ ...u, geracaoAlocada: geracaoMedia * (mediasUC[i]/totalMediaUC), mediaKwh: mediasUC[i] }))
+    autoconsumo, injetado,
+    ucs: ucs.map((u,i) => ({
+      ...u,
+      mediaKwh:       mediasUC[i],
+      creditoAlocado: creditosUC[i],
+      autoconsumoUC:  u.geradora ? autoconsumo : 0,
+    }))
   };
 
   // Atualiza % de atendimento nos setups
@@ -957,6 +981,83 @@ function calcularFinanceiro() {
   const setup = setups[0];
   if(!setup || !setup.precoFinal) return;
 
+  // ── Geração REAL do kWp do setup escolhido (não do dimensionamento estimado) ──
+  const perdas   = parseFloat(document.getElementById('param-perdas').value)/100 || 0.2;
+  const kwpSetup = setup.kwpCalculado || calc.kwp || 0;
+  const geracaoMesSetup = hspSelecionado
+    ? hspSelecionado.map((h,i) => kwpSetup * 1000 * DIAS_MES[i] * h / 1000 * (1-perdas))
+    : calc.geracaoMes || [];
+  const geracaoMediaSetup = geracaoMesSetup.length
+    ? geracaoMesSetup.reduce((a,b)=>a+b,0)/12
+    : calc.geracaoMedia || 0;
+
+  // ── Recalcular conta depois com geração real e prioridade correta ──
+  // Prioridade 1: atender UC geradora (autoconsumo instantâneo)
+  // Prioridade 2: créditos cobrem o restante da geradora
+  // Prioridade 3: sobra vai para beneficiárias por rateio
+  const pctFioB    = (() => {
+    const a = new Date().getFullYear();
+    return a<=2023?.15:a===2024?.30:a===2025?.45:a===2026?.60:a===2027?.75:a===2028?.90:1.0;
+  })();
+  const mediasUC   = (ucs||[]).map(u => {
+    const ex = 1+(u.extra||0)/100;
+    return u.consumos.reduce((a,b)=>a+(parseFloat(b)||0),0)/12*ex;
+  });
+  const totalMedia = mediasUC.reduce((a,b)=>a+b,0)||1;
+  const ucGer      = (ucs||[]).find(u=>u.geradora) || (ucs||[])[0];
+  const idxGer     = (ucs||[]).indexOf(ucGer);
+  const mediaGer   = mediasUC[idxGer]||0;
+  const tusdInj    = parseFloat(document.getElementById('param-fiob')?.value)||0.2215;
+
+  // Autoconsumo instantâneo na geradora
+  const autocons   = mediaGer * ((ucGer?.fs||0)/100); // FS% do consumo da geradora é instantâneo
+  // Créditos restantes: primeiro cobre a geradora, depois beneficiárias
+  let creditoDisp  = geracaoMediaSetup - autocons;
+
+  let contaAtualTotal  = 0;
+  let contaDepoisTotal = 0;
+
+  // Processar geradora primeiro, depois beneficiárias
+  const ordem = [idxGer, ...(ucs||[]).map((_,i)=>i).filter(i=>i!==idxGer)];
+
+  ordem.forEach(i => {
+    const uc      = (ucs||[])[i];
+    if(!uc) return;
+    const mediaUC = mediasUC[i];
+    const tusdUC  = uc.tusd||0.2215;
+    const teUC    = uc.te||0.2729;
+    const tarifa  = tusdUC + teUC;
+    const fiobDif = Math.max(0, tusdUC - tusdInj);
+    const minKwh  = uc.conexao==='monofasico'?30:uc.conexao==='trifasico'?100:50;
+
+    contaAtualTotal += mediaUC * tarifa;
+
+    // Autoconsumo só na geradora
+    const inst = (i === idxGer) ? autocons : 0;
+
+    // Crédito: primeiro cobre a geradora até zerar, depois beneficiárias por rateio
+    let creditoUC;
+    if(i === idxGer) {
+      // Geradora usa créditos até cobrir seu próprio consumo residual (exceto mínimo)
+      const maxGer = Math.max(0, mediaUC - inst - minKwh);
+      creditoUC    = Math.min(creditoDisp, maxGer);
+      creditoDisp  -= creditoUC; // sobra vai para beneficiárias
+    } else {
+      // Beneficiárias dividem o crédito restante proporcional ao consumo
+      const totalBenef = mediasUC.reduce((a,m,j)=>(j!==idxGer?a+m:a),0)||1;
+      creditoUC = creditoDisp * (mediaUC / totalBenef);
+      creditoUC = Math.min(creditoUC, Math.max(0, mediaUC - minKwh));
+    }
+
+    const residual  = Math.max(0, mediaUC - inst - creditoUC);
+    const custoMin  = minKwh * tarifa;
+    const custoFioB = creditoUC * fiobDif * pctFioB;
+    const custoRes  = residual * tarifa;
+    contaDepoisTotal += Math.max(custoMin, custoFioB + custoRes);
+  });
+
+  const economiaReal = contaAtualTotal - contaDepoisTotal;
+
   const investimento = setup.precoFinal;
   const infE   = parseFloat(document.getElementById('fin-inf-energia').value)/100 || 0.10;
   const infA   = parseFloat(document.getElementById('fin-inf-anual').value)/100   || 0.04;
@@ -984,7 +1085,7 @@ function calcularFinanceiro() {
     const fatorInfE  = Math.pow(1+infE, ano-1);
     const fatorInfA  = Math.pow(1+infA, ano-1);
     const custManut  = investimento * manut * fatorInfA;
-    const economiaAno= calc.economia * 12 * fatorDeg * fatorInfE;
+    const economiaAno= economiaReal * 12 * fatorDeg * fatorInfE;
 
     // Ano 20: inclui custo de substituição do inversor
     const custExtra  = ano === 20 ? custoInversor * fatorInfA : 0;
@@ -1017,7 +1118,7 @@ function calcularFinanceiro() {
   } catch(e) {}
 
   // Custo da energia solar = investimento / (geração total 25 anos)
-  const ger25 = (calc.geracaoMedia || 0) * 12 * vida;
+  const ger25 = geracaoMediaSetup * 12 * vida;
   const custoSolar = ger25 > 0 ? investimento / ger25 : 0;
 
   document.getElementById('resultado-financeiro').style.display = 'block';
@@ -1729,7 +1830,8 @@ async function gerarPropostaFinal() {
       kwp:          calc.kwp          || 0,
       geracaoMedia: calc.geracaoMedia || 0,
       geracaoMes:   calc.geracaoMes   || [],
-      consumoMes:   getConsumos(),
+      consumoMes:   getConsumos(), // soma consolidada (retrocompat)
+      consumoMesPorUC: ucs.map(u => ({ nome: u.nome, consumos: [...u.consumos] })),
       contaAtual:   calc.contaAtual   || 0,
       contaDepois:  calc.contaDepois  || 0,
       economia:     calc.economia     || 0,
@@ -2152,7 +2254,11 @@ function carregarPropostaParaEdicao(p, editarId) {
   // Restaurar UCs salvas
   if(dados.ucs && dados.ucs.length) {
     ucs = [];
-    dados.ucs.forEach(u => adicionarUC(u));
+    dados.ucs.forEach(u => {
+      // Garantir que consumos sejam números (pode vir como strings do JSON)
+      if(u.consumos) u.consumos = u.consumos.map(v => parseFloat(v)||0);
+      adicionarUC(u);
+    });
   } else if(dados.calc && dados.calc.consumoMes) {
     // Retrocompatibilidade: proposta antiga sem multi-UC
     ucs = [];
@@ -2163,8 +2269,8 @@ function carregarPropostaParaEdicao(p, editarId) {
       tusd: dados.params?.fiob || 0.2215,
       te: dados.params?.te || 0.2729,
       icms: dados.params?.icms || 18,
-      consumos: dados.calc.consumoMes,
-      extra: dados.params?.consumo_extra_pct || 0,
+      consumos: dados.calc.consumoMes.map(v => v / (1 + ((dados.params?.consumo_extra_pct||0)/100))),
+      extra: 0, // extra já estava embutido no consumoMes salvo
     });
   }
 
