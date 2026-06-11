@@ -267,7 +267,7 @@ h1{font-family:'Fraunces',serif;font-size:28px;font-weight:700;margin-bottom:8px
           <div class="form-grid">
             <div class="form-field"><label>Número da proposta</label><input type="text" id="prop-numero" placeholder="Ex: IDC.001.26.R00" readonly style="background:var(--bg);"/></div>
             <div class="form-field"><label>Data</label><input type="date" id="prop-data"/></div>
-            <div class="form-field"><label>Validade (dias)</label><input type="number" id="prop-validade" value="7"/></div>
+            <div class="form-field"><label>Validade (dias)</label><input type="number" id="prop-validade" value="30"/></div>
             <div class="form-field"><label>Revisão</label><input type="number" id="prop-revisao" value="0" min="0"/></div>
           </div>
         </div>
@@ -317,6 +317,7 @@ h1{font-family:'Fraunces',serif;font-size:28px;font-weight:700;margin-bottom:8px
       <div class="card-body">
         <!-- UCs renderizadas dinamicamente -->
         <div id="ucs-container"></div>
+        <div id="painel-cobertura-ucs"></div>
 
         <!-- Parâmetros globais do sistema -->
         <div style="margin-top:24px;padding-top:20px;border-top:1.5px solid var(--border);">
@@ -328,9 +329,9 @@ h1{font-family:'Fraunces',serif;font-size:28px;font-weight:700;margin-bottom:8px
               <span class="hint">Cabeamento, temperatura, sujeira, etc.</span>
             </div>
             <div class="form-field">
-              <label>TUSD de Injeção (R$/kWh)</label>
-              <input type="number" id="param-fiob" value="0.2215" step="0.0001" oninput="calcularTudo()"/>
-              <span class="hint">Tarifa TUSD paga como crédito pela distribuidora (menor que TUSD consumo)</span>
+              <label>Fio B — TUSD sem ICMS (R$/kWh)</label>
+              <input type="number" id="param-fiob" value="0.1490" step="0.0001" oninput="calcularTudo()"/>
+              <span class="hint">Publicado pela ANEEL na resolução tarifária da concessionária</span>
             </div>
             <div class="form-field">
               <label>Consumo extra (% ampliação futura)</label>
@@ -628,16 +629,15 @@ document.addEventListener('click', e => {
 let ucs = [];
 
 function adicionarUC(dados) {
-  // dados: opcional, para restaurar de proposta salva
   const id = Date.now() + Math.random();
+  const isFirst = ucs.length === 0;
   const uc = dados || {
     id, nome: 'UC ' + (ucs.length + 1),
-    geradora: ucs.length === 0, // primeira UC é geradora por padrão
+    geradora: isFirst,
     conexao: 'bifasico',
-    fs: ucs.length === 0 ? 30 : 0, // geradora tem fs>0, beneficiárias 0%
-    tusd: 0.2215,
-    te: 0.2729,
-    icms: 18,
+    fs: isFirst ? 30 : 0,
+    excedente: 100, // % do excedente enviado para rateio (padrão 100%)
+    tusd: 0.2215, te: 0.2729, icms: 18,
     consumos: Array(12).fill(0),
     extra: 0,
   };
@@ -650,129 +650,267 @@ function adicionarUC(dados) {
 function removerUC(idx) {
   if(ucs.length <= 1) { toast('Precisa de pelo menos 1 UC.'); return; }
   ucs.splice(idx, 1);
-  // Garantir que sempre haja uma geradora
   if(!ucs.some(u => u.geradora)) ucs[0].geradora = true;
   renderUCs();
   calcularTudo();
 }
 
-function setGeradora(idx) {
-  // Só uma UC pode ser geradora
-  ucs.forEach((u, i) => {
-    u.geradora = (i === idx);
-    if(i !== idx && u.fs === 0 && i === idx) u.fs = 0;
-  });
+function toggleGeradora(idx) {
+  // Múltiplas geradoras permitidas — toggle individual
+  ucs[idx].geradora = !ucs[idx].geradora;
+  if(ucs[idx].geradora && ucs[idx].fs === 0) ucs[idx].fs = 30; // sugerir FS ao marcar
+  if(!ucs.some(u => u.geradora)) ucs[0].geradora = true; // pelo menos uma
   renderUCs();
   calcularTudo();
 }
 
 function replicarTarifas(fromIdx) {
-  // Copia TUSD, TE, ICMS da UC fromIdx para todas as outras
   const src = ucs[fromIdx];
   if(!src) return;
-  ucs.forEach((u, i) => {
-    if(i !== fromIdx) {
-      u.tusd = src.tusd;
-      u.te   = src.te;
-      u.icms = src.icms;
-    }
-  });
+  ucs.forEach((u, i) => { if(i !== fromIdx) { u.tusd=src.tusd; u.te=src.te; u.icms=src.icms; }});
   toast('Tarifas replicadas para todas as UCs.');
   renderUCs();
   calcularTudo();
+}
+
+// Calcula geração e créditos de cada geradora mês a mês (para painel de cobertura)
+function calcularCobertura(geracaoMesPorGeradora) {
+  // geracaoMesPorGeradora: array[nGeradoras][12]
+  // Retorna para cada beneficiária: cobertura % por mês e % anual
+  const beneficiarias = ucs.filter(u => !u.geradora);
+  if(!beneficiarias.length || !geracaoMesPorGeradora.length) return null;
+
+  const meses = Array(12).fill(0).map((_,m) => {
+    // Total de créditos disponíveis neste mês (excedente de todas geradoras)
+    let totalCredito = 0;
+    ucs.forEach((uc, i) => {
+      if(!uc.geradora) return;
+      const mediaUC = uc.consumos.reduce((a,b)=>a+(parseFloat(b)||0),0)/12;
+      const gen = geracaoMesPorGeradora[ucs.filter(u=>u.geradora).indexOf(uc)]?.[m] || 0;
+      const auto = mediaUC * ((uc.fs||0)/100);
+      const excedente = Math.max(0, gen - auto) * ((uc.excedente||100)/100);
+      totalCredito += excedente;
+    });
+
+    // Total necessário pelas beneficiárias
+    const totalNecessario = beneficiarias.reduce((a, uc) => {
+      const minKwh = uc.conexao==='trifasico'?100:uc.conexao==='bifasico'?50:30;
+      const mediaUC = uc.consumos.reduce((a,b)=>a+(parseFloat(b)||0),0)/12;
+      return a + Math.max(0, mediaUC - minKwh);
+    }, 0);
+
+    return { credito: totalCredito, necessario: totalNecessario,
+             cobertura: totalNecessario > 0 ? Math.min(100, totalCredito/totalNecessario*100) : 100 };
+  });
+  return meses;
 }
 
 function renderUCs() {
   const cont = document.getElementById('ucs-container');
   if(!cont) return;
 
-  // Calcular rateio sugerido proporcional ao consumo de cada UC
+  const MESES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const geradoras   = ucs.filter(u => u.geradora);
+  const beneficiarias = ucs.filter(u => !u.geradora);
+  const multiGeradora = geradoras.length > 1;
+
+  // Médias de consumo por UC
   const mediasUC = ucs.map(u => {
-    const extra = 1 + (u.extra||0)/100;
-    return u.consumos.reduce((a,b)=>a+(parseFloat(b)||0),0)/12 * extra;
+    const ex = 1 + (u.extra||0)/100;
+    return u.consumos.reduce((a,b)=>a+(parseFloat(b)||0),0)/12 * ex;
   });
   const totalMedia = mediasUC.reduce((a,b)=>a+b,0);
-  const rateioSugerido = mediasUC.map(m => totalMedia > 0 ? (m/totalMedia*100) : 0);
 
-  cont.innerHTML = ucs.map((uc, idx) => `
-    <div style="border:1.5px solid ${uc.geradora ? 'var(--orange)' : 'var(--border)'};border-radius:12px;padding:16px;margin-bottom:16px;background:${uc.geradora ? 'rgba(232,146,10,.04)' : 'var(--bg)'};">
+  // Rateio sugerido por geradora para cada beneficiária (proporcional ao consumo)
+  // Para cada geradora: rateio[benef] = consumoBenef / totalBenef * 100
+  const totalBenefMedia = beneficiarias.reduce((a,u) => {
+    const ex=1+(u.extra||0)/100;
+    return a + u.consumos.reduce((a2,b)=>a2+(parseFloat(b)||0),0)/12*ex;
+  }, 0);
 
-      <!-- Cabeçalho UC -->
+  cont.innerHTML = ucs.map((uc, idx) => {
+    const mediaUC = mediasUC[idx];
+    const isGer   = uc.geradora;
+
+    // Média em tempo real por mês (para exibir abaixo da tabela)
+    const mediaAtual = uc.consumos.reduce((a,b)=>a+(parseFloat(b)||0),0)/12;
+
+    // Painel de rateio sugerido (só para geradoras com beneficiárias)
+    let painelRateio = '';
+    if(isGer && beneficiarias.length > 0) {
+      const linhas = beneficiarias.map(b => {
+        const mB = b.consumos.reduce((a,v)=>a+(parseFloat(v)||0),0)/12*(1+(b.extra||0)/100);
+        const pct = totalBenefMedia > 0 ? (mB/totalBenefMedia*100) : 0;
+        return `<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid var(--border);">
+          <span>${b.nome}</span>
+          <strong style="color:var(--orange-dark);">${pct.toFixed(1)}%</strong>
+        </div>`;
+      }).join('');
+      painelRateio = `
+        <div style="margin-top:10px;padding:10px;background:rgba(232,146,10,.06);border-radius:8px;border:1px solid rgba(232,146,10,.2);">
+          <div style="font-size:11px;font-weight:700;color:var(--orange-dark);margin-bottom:6px;">
+            RATEIO SUGERIDO PARA BENEFICIÁRIAS
+          </div>
+          ${linhas}
+          <div style="font-size:11px;color:var(--gray);margin-top:6px;">
+            % de excedente enviado para rateio:
+            <input type="number" min="0" max="100" step="1" value="${uc.excedente??100}"
+              style="width:60px;padding:2px 6px;border:1px solid var(--border);border-radius:4px;font-size:12px;font-family:inherit;margin-left:4px;"
+              oninput="ucs[${idx}].excedente=parseFloat(this.value)||0;calcularTudo()"/>%
+            <span style="margin-left:4px;color:var(--gray-dark);">do excedente vai para as beneficiárias</span>
+          </div>
+        </div>`;
+    }
+
+    return `
+    <div style="border:1.5px solid ${isGer?'var(--orange)':'var(--border)'};border-radius:12px;padding:16px;margin-bottom:16px;background:${isGer?'rgba(232,146,10,.04)':'var(--bg)'};">
+
+      <!-- Cabeçalho -->
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
         <input type="text" value="${uc.nome}" placeholder="Nome da UC"
           style="font-weight:700;font-size:14px;border:none;border-bottom:1.5px solid var(--border);background:transparent;padding:2px 6px;font-family:inherit;outline:none;flex:1;min-width:120px;"
-          oninput="ucs[${idx}].nome=this.value;document.querySelectorAll('.uc-nome-badge')[${idx}].textContent=this.value"/>
-        ${uc.geradora
-          ? `<span style="background:var(--orange);color:white;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;">⚡ GERADORA</span>`
-          : `<button class="btn btn-outline" style="font-size:11px;padding:4px 10px;" onclick="setGeradora(${idx})">Definir como geradora</button>`}
+          oninput="ucs[${idx}].nome=this.value"/>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600;color:${isGer?'var(--orange)':'var(--gray)'};user-select:none;">
+          <input type="checkbox" ${isGer?'checked':''} onchange="toggleGeradora(${idx})"
+            style="width:16px;height:16px;accent-color:var(--orange);cursor:pointer;"/>
+          ⚡ Geradora
+        </label>
         ${ucs.length > 1 ? `<button onclick="removerUC(${idx})" style="background:none;border:none;cursor:pointer;color:var(--gray);font-size:18px;padding:0 4px;" title="Remover UC"><i class="ph ph-trash"></i></button>` : ''}
       </div>
 
       <!-- Consumos 12 meses -->
-      <div style="overflow-x:auto;margin-bottom:12px;">
+      <div style="overflow-x:auto;margin-bottom:4px;">
         <table class="consumo-table" style="min-width:600px;">
-          <thead><tr>
-            <th>Jan</th><th>Fev</th><th>Mar</th><th>Abr</th><th>Mai</th><th>Jun</th>
-            <th>Jul</th><th>Ago</th><th>Set</th><th>Out</th><th>Nov</th><th>Dez</th>
-          </tr></thead>
+          <thead><tr>${MESES_ABREV.map(m=>`<th>${m}</th>`).join('')}</tr></thead>
           <tbody><tr>
             ${uc.consumos.map((v,m) => `<td><input type="number" min="0" placeholder="0" value="${v||''}"
-              style="width:52px;" oninput="ucs[${idx}].consumos[${m}]=parseFloat(this.value)||0;calcularTudo()"/></td>`).join('')}
+              style="width:52px;" oninput="ucs[${idx}].consumos[${m}]=parseFloat(this.value)||0;atualizarMediaUC(${idx});calcularTudo()"/></td>`).join('')}
           </tr></tbody>
         </table>
       </div>
+      <div style="font-size:12px;color:var(--gray);margin-bottom:12px;">
+        Média: <strong id="media-uc-${idx}" style="color:var(--orange-dark);">${mediaAtual.toFixed(0)} kWh/mês</strong>
+      </div>
 
-      <!-- Parâmetros da UC -->
+      <!-- Parâmetros -->
       <div class="form-grid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;">
         <div class="form-field" style="margin-bottom:0;">
           <label>Tipo de entrada</label>
           <select onchange="ucs[${idx}].conexao=this.value;calcularTudo()">
-            <option value="monofasico" ${uc.conexao==='monofasico'?'selected':''}>Monofásico (30 kWh mín.)</option>
-            <option value="bifasico"   ${uc.conexao==='bifasico'  ?'selected':''}>Bifásico (50 kWh mín.)</option>
-            <option value="trifasico"  ${uc.conexao==='trifasico' ?'selected':''}>Trifásico (100 kWh mín.)</option>
+            <option value="monofasico" ${uc.conexao==='monofasico'?'selected':''}>Monofásico (30 kWh)</option>
+            <option value="bifasico"   ${uc.conexao==='bifasico'  ?'selected':''}>Bifásico (50 kWh)</option>
+            <option value="trifasico"  ${uc.conexao==='trifasico' ?'selected':''}>Trifásico (100 kWh)</option>
           </select>
         </div>
         <div class="form-field" style="margin-bottom:0;">
           <label>Fator de simultaneidade (%)</label>
           <input type="number" min="0" max="100" step="1" value="${uc.fs}"
             oninput="ucs[${idx}].fs=parseFloat(this.value)||0;calcularTudo()"
-            style="border-color:${uc.geradora?'var(--orange)':'var(--border)'}"/>
-          <span class="hint">${uc.fs===0?'Só recebe créditos (0% = não gera)':'% consumido diretamente'}</span>
+            style="border-color:${isGer?'var(--orange)':'var(--border)'}"/>
+          <span class="hint">${uc.fs===0?'Só recebe créditos':'% consumo instantâneo'}</span>
         </div>
         <div class="form-field" style="margin-bottom:0;">
           <label>TUSD (R$/kWh)</label>
-          <input type="number" step="0.0001" value="${uc.tusd}"
-            oninput="ucs[${idx}].tusd=parseFloat(this.value)||0;calcularTudo()"/>
+          <input type="number" step="0.0001" value="${uc.tusd}" oninput="ucs[${idx}].tusd=parseFloat(this.value)||0;calcularTudo()"/>
         </div>
         <div class="form-field" style="margin-bottom:0;">
           <label>TE (R$/kWh)</label>
-          <input type="number" step="0.0001" value="${uc.te}"
-            oninput="ucs[${idx}].te=parseFloat(this.value)||0;calcularTudo()"/>
+          <input type="number" step="0.0001" value="${uc.te}" oninput="ucs[${idx}].te=parseFloat(this.value)||0;calcularTudo()"/>
         </div>
         <div class="form-field" style="margin-bottom:0;">
           <label>ICMS (%)</label>
-          <input type="number" step="0.1" value="${uc.icms}"
-            oninput="ucs[${idx}].icms=parseFloat(this.value)||0;calcularTudo()"/>
+          <input type="number" step="0.1" value="${uc.icms}" oninput="ucs[${idx}].icms=parseFloat(this.value)||0;calcularTudo()"/>
         </div>
         <div class="form-field" style="margin-bottom:0;">
           <label>Extra ampliação (%)</label>
-          <input type="number" min="0" step="1" value="${uc.extra||0}"
-            oninput="ucs[${idx}].extra=parseFloat(this.value)||0;calcularTudo()"/>
+          <input type="number" min="0" step="1" value="${uc.extra||0}" oninput="ucs[${idx}].extra=parseFloat(this.value)||0;calcularTudo()"/>
         </div>
       </div>
 
-      <!-- Rateio sugerido + botão replicar tarifas -->
+      ${painelRateio}
+
+      <!-- Rodapé -->
       <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:10px;">
-        <div style="font-size:12px;color:var(--gray);">
-          Rateio sugerido: <strong style="color:var(--orange-dark);">${rateioSugerido[idx].toFixed(1)}%</strong>
-          &nbsp;·&nbsp; Média: <strong><span class="uc-nome-badge" style="display:none">${uc.nome}</span>${(mediasUC[idx]).toFixed(0)} kWh/mês</strong>
-        </div>
         <button class="btn btn-outline" style="font-size:11px;padding:4px 12px;" onclick="replicarTarifas(${idx})">
           <i class="ph ph-copy"></i> Replicar tarifas para todas
         </button>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
+
+  // Painel de cobertura (quando há geradoras e beneficiárias)
+  renderPainelCobertura();
+}
+
+function atualizarMediaUC(idx) {
+  // Atualiza média em tempo real sem rerender tudo
+  const el = document.getElementById('media-uc-' + idx);
+  if(!el) return;
+  const media = ucs[idx].consumos.reduce((a,b)=>a+(parseFloat(b)||0),0)/12;
+  el.textContent = media.toFixed(0) + ' kWh/mês';
+}
+
+function renderPainelCobertura() {
+  const cont = document.getElementById('painel-cobertura-ucs');
+  if(!cont) return;
+  const geradoras   = ucs.filter(u => u.geradora);
+  const beneficiarias = ucs.filter(u => !u.geradora);
+  if(!geradoras.length || !beneficiarias.length || !window._calc) { cont.innerHTML=''; return; }
+
+  const geracaoMes = window._calc.geracaoMes || [];
+  if(!geracaoMes.length) { cont.innerHTML=''; return; }
+
+  // Geração por geradora: proporcional ao consumo de cada geradora
+  const totalConsumo = ucs.reduce((a,u)=>a+u.consumos.reduce((s,v)=>s+(parseFloat(v)||0),0)/12,0)||1;
+
+  const MESES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+  // Para cada mês, calcular crédito total disponível e necessidade das beneficiárias
+  const analise = geracaoMes.map((genTotal, m) => {
+    let creditoTotal = 0;
+    geradoras.forEach(uc => {
+      const mediaUC  = uc.consumos.reduce((a,b)=>a+(parseFloat(b)||0),0)/12;
+      const propGer  = mediaUC / totalConsumo;
+      const genUC    = genTotal * propGer;
+      const auto     = mediaUC * ((uc.fs||0)/100);
+      const excedente = Math.max(0, genUC - auto) * ((uc.excedente??100)/100);
+      creditoTotal  += excedente;
+    });
+    const necessidade = beneficiarias.reduce((a, uc) => {
+      const minKwh = uc.conexao==='trifasico'?100:uc.conexao==='bifasico'?50:30;
+      const mediaUC = uc.consumos.reduce((a2,b)=>a2+(parseFloat(b)||0),0)/12;
+      return a + Math.max(0, mediaUC - minKwh);
+    }, 0);
+    const cobertura = necessidade > 0 ? Math.min(100, creditoTotal/necessidade*100) : 100;
+    return { credito: creditoTotal, necessidade, cobertura, mes: MESES_ABREV[m] };
+  });
+
+  const minCobertura = Math.min(...analise.map(a=>a.cobertura));
+  const avgCobertura = analise.reduce((a,b)=>a+b.cobertura,0)/12;
+  const mesMinIdx    = analise.findIndex(a=>a.cobertura===minCobertura);
+
+  const corStatus = minCobertura >= 95 ? '#16a34a' : minCobertura >= 70 ? '#d97706' : '#dc2626';
+  const iconeStatus = minCobertura >= 95 ? '✅' : minCobertura >= 70 ? '⚠️' : '❌';
+
+  cont.innerHTML = `
+    <div style="border:1.5px solid ${corStatus};border-radius:12px;padding:16px;margin-top:16px;background:${minCobertura>=95?'rgba(22,163,74,.04)':'rgba(220,38,38,.04)'};">
+      <div style="font-size:13px;font-weight:700;color:${corStatus};margin-bottom:12px;">
+        ${iconeStatus} COBERTURA DAS BENEFICIÁRIAS — Média anual: ${avgCobertura.toFixed(0)}% | Pior mês: ${analise[mesMinIdx].mes} (${minCobertura.toFixed(0)}%)
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        ${analise.map(a => {
+          const cor = a.cobertura>=95?'#16a34a':a.cobertura>=70?'#d97706':'#dc2626';
+          return `<div style="text-align:center;min-width:44px;">
+            <div style="font-size:10px;color:var(--gray);">${a.mes}</div>
+            <div style="font-size:12px;font-weight:700;color:${cor};">${a.cobertura.toFixed(0)}%</div>
+          </div>`;
+        }).join('')}
+      </div>
+      ${minCobertura < 95 ? `<div style="font-size:12px;color:#dc2626;margin-top:10px;padding:8px;background:rgba(220,38,38,.08);border-radius:6px;">
+        ⚠️ Em ${analise[mesMinIdx].mes} os créditos cobrem apenas ${minCobertura.toFixed(0)}% do necessário pelas beneficiárias.
+        Considere aumentar o kWp ou reduzir o % de excedente enviado para rateio.
+      </div>` : ''}
+    </div>`;
 }
 
 function getConsumos() {
@@ -794,6 +932,7 @@ function calcularTudo() {
   // Atualizar texto consolidado
   const el = document.getElementById('consumo-media');
   if(el) el.textContent = `Total consolidado: ${media.toFixed(0)} kWh/mês (${ucs.length} UC${ucs.length>1?'s':''})`;
+  renderPainelCobertura();
 
   if(media > 0 && hspSelecionado) calcularDimensionamento(consumos, media);
   calcularFinanceiro();
@@ -833,46 +972,56 @@ function calcularDimensionamento(consumos, media) {
   let contaAtualTotal  = 0;
   let contaDepoisTotal = 0;
 
-  // ── Passo 1: autoconsumo instantâneo na UC geradora ──
-  // FS% da geração é consumido diretamente na geradora (sem passar pela rede)
-  const ucGeradora    = ucs.find(u => u.geradora) || ucs[0];
-  const mediaGeradora = mediasUC[ucs.indexOf(ucGeradora)];
-  const autoconsumo   = mediaGeradora * ((ucGeradora.fs||0)/100); // FS% do consumo da geradora é instantâneo (gratuito)
-  const injetado      = geracaoMedia - autoconsumo; // energia injetada na rede como crédito
+  // ── Passo 1: autoconsumo por geradora (múltiplas geradoras suportadas) ──
+  // Cada geradora recebe geração proporcional ao seu consumo
+  // FS% do consumo de cada geradora é instantâneo (gratuito)
+  // Excedente × excedente% vai para rateio das beneficiárias
+  let autoconsumoTotal = 0;
+  let injetadoTotal    = 0;
+  ucs.forEach((uc, i) => {
+    if(!uc.geradora) return;
+    const mediaUC  = mediasUC[i];
+    const propGer  = totalMediaUC > 0 ? mediaUC / totalMediaUC : 0;
+    const genUC    = geracaoMedia * propGer;
+    const auto     = mediaUC * ((uc.fs||0)/100);
+    const excedente = Math.max(0, genUC - auto) * ((uc.excedente??100)/100);
+    autoconsumoTotal += auto;
+    injetadoTotal    += excedente;
+  });
+  const autoconsumo = autoconsumoTotal;
+  const injetado    = injetadoTotal;
 
   // ── Passo 2: calcular conta de cada UC com prioridade geradora primeiro ──
   // MODELO CONFIRMADO pelas faturas reais (mar/2026):
   // Tarifas TUSD e TE já incluem ICMS. Conta = residual×tarifa + creditoUsado×FioB×pctFioB
-  const tusdInj    = parseFloat(document.getElementById('param-fiob')?.value) || 0.2215;
-  const idxGer     = ucs.indexOf(ucGeradora);
-  const totalBenef = mediasUC.reduce((a,m,j) => j!==idxGer ? a+m : a, 0) || 1;
-  let   creditoRest = injetado; // créditos disponíveis para distribuir
+  const tusdInj    = parseFloat(document.getElementById('param-fiob')?.value) || 0.1490;
+  const totalBenef = mediasUC.reduce((a,m,j) => !ucs[j].geradora ? a+m : a, 0) || 1;
+  const autoconsumosPorUC2 = ucs.map((uc,i) => uc.geradora ? mediasUC[i]*((uc.fs||0)/100) : 0);
+  const idxsGer2   = ucs.map((_,i)=>i).filter(i=>ucs[i].geradora);
+  const idxsBenef2 = ucs.map((_,i)=>i).filter(i=>!ucs[i].geradora);
+  let creditoParaGer2 = injetado;
+  let creditoRestBenef = injetado;
 
-  // Processar geradora primeiro, depois beneficiárias
-  const ordemUCs = [idxGer, ...ucs.map((_,i)=>i).filter(i=>i!==idxGer)];
-
-  ordemUCs.forEach(i => {
+  [...idxsGer2, ...idxsBenef2].forEach(i => {
     const uc      = ucs[i];
     const mediaUC = mediasUC[i];
     const tusdUC  = uc.tusd || 0.2215;
     const teUC    = uc.te   || 0.2729;
     const tarifa  = tusdUC + teUC;
-    const fiobDif = Math.max(0, tusdUC - tusdInj);
+    const fiobDif = tusdInj;
     const minKwh  = uc.conexao==='monofasico' ? 30 : uc.conexao==='trifasico' ? 100 : 50;
 
     contaAtualTotal += mediaUC * tarifa;
 
-    // Autoconsumo só na geradora
-    const inst = (i === idxGer) ? autoconsumo : 0;
-
-    // Crédito: geradora tem prioridade, beneficiárias dividem o restante
+    const inst    = autoconsumosPorUC2[i] || 0;
     const maxComp = Math.max(0, mediaUC - inst - minKwh);
-    let creditoUC;
-    if(i === idxGer) {
-      creditoUC   = Math.min(creditoRest, maxComp);
-      creditoRest -= creditoUC;
+    let creditoUC = 0;
+
+    if(uc.geradora) {
+      creditoUC = Math.min(creditoParaGer2, maxComp);
+      creditoParaGer2 -= creditoUC;
     } else {
-      creditoUC = Math.min(creditoRest * (mediaUC / totalBenef), maxComp);
+      creditoUC = Math.min(creditoRestBenef * (mediaUC / totalBenef), maxComp);
     }
 
     const residual = Math.max(0, mediaUC - inst - creditoUC);
@@ -910,9 +1059,8 @@ function calcularDimensionamento(consumos, media) {
     autoconsumo, injetado,
     ucs: ucs.map((u,i) => ({
       ...u,
-      mediaKwh:       mediasUC[i],
-      creditoAlocado: creditosUC[i],
-      autoconsumoUC:  u.geradora ? autoconsumo : 0,
+      mediaKwh:      mediasUC[i],
+      autoconsumoUC: u.geradora ? autoconsumo : 0,
     }))
   };
 
@@ -995,30 +1143,27 @@ function calcularFinanceiro() {
     return u.consumos.reduce((a,b)=>a+(parseFloat(b)||0),0)/12*ex;
   });
   const totalMedia = mediasUC.reduce((a,b)=>a+b,0)||1;
-  const ucGer      = (ucs||[]).find(u=>u.geradora) || (ucs||[])[0];
-  const idxGer     = (ucs||[]).indexOf(ucGer);
-  const mediaGer   = mediasUC[idxGer]||0;
-  const tusdInj    = parseFloat(document.getElementById('param-fiob')?.value)||0.2215;
-
-  // Autoconsumo instantâneo na geradora
-  const autocons   = mediaGer * ((ucGer?.fs||0)/100); // FS% do consumo da geradora é instantâneo
-  // Créditos restantes: primeiro cobre a geradora, depois beneficiárias
-  let creditoDisp  = geracaoMediaSetup - autocons;
+  // Autoconsumo total de todas as geradoras (multi-geradora)
+  const autocons = (ucs||[]).reduce((a,uc,i) => uc.geradora ? a + mediasUC[i]*((uc.fs||0)/100) : a, 0);
+  // Excedente injetado = geração - autoconsumo de todas geradoras × excedente%
+  const injetadoFin = (ucs||[]).reduce((a,uc,i) => {
+    if(!uc.geradora) return a;
+    const propGer = totalMedia > 0 ? mediasUC[i]/totalMedia : 0;
+    const genUC   = geracaoMediaSetup * propGer;
+    const auto    = mediasUC[i] * ((uc.fs||0)/100);
+    return a + Math.max(0, genUC - auto) * ((uc.excedente??100)/100);
+  }, 0);
 
   let contaAtualTotal  = 0;
   let contaDepoisTotal = 0;
 
-  // Processar geradora primeiro, depois beneficiárias
-  const ordem = [idxGer, ...(ucs||[]).map((_,i)=>i).filter(i=>i!==idxGer)];
-
-  ordem.forEach(i => {
-    const uc      = (ucs||[])[i];
+  (ucs||[]).forEach((uc, i) => {
     if(!uc) return;
     const mediaUC = mediasUC[i];
     const tusdUC  = uc.tusd||0.2215;
     const teUC    = uc.te||0.2729;
     const tarifa  = tusdUC + teUC;
-    const fiobDif = Math.max(0, tusdUC - tusdInj);
+    const fiobDif = tusdInj; // Fio B direto (já é a diferença TUSD_consumo - TUSD_injeção)
     const minKwh  = uc.conexao==='monofasico'?30:uc.conexao==='trifasico'?100:50;
 
     contaAtualTotal += mediaUC * tarifa;
@@ -1777,7 +1922,7 @@ async function gerarPropostaFinal() {
   if(!hspSelecionado) erros.push('Cidade / HSP (Etapa 2)');
   const consumos = getConsumos();
   if(consumos.every(v => v === 0)) erros.push('Consumo mensal das UCs (Etapa 2)');
-  if(!ucs.some(u => u.geradora)) erros.push('Definir uma UC como geradora (Etapa 2)');
+  if(!ucs.some(u => u.geradora)) erros.push('Definir ao menos uma UC como geradora (Etapa 2)');
   if(!setups.length) erros.push('Pelo menos 1 setup (Etapa 3)');
   const s0 = setups[0] || {};
   if(!s0.qtdModulos || !s0.potModulo) erros.push('Quantidade e potência dos painéis (Etapa 3)');
@@ -1943,6 +2088,8 @@ async function gerarPropostaFinal() {
           dados_proposta:    proposta.dados_proposta,
           prop_numero:       proposta.prop_numero,
           revisao:           novaRev,
+          validade_dias:     proposta.validade_dias,
+          created_at:        new Date().toISOString(), // resetar validade a partir da nova revisão
           updated_at:        new Date().toISOString(),
           status:            'Enviada'
           // link_unico NÃO incluído — mantém o original
