@@ -840,53 +840,44 @@ function calcularDimensionamento(consumos, media) {
   const autoconsumo   = mediaGeradora * ((ucGeradora.fs||0)/100); // FS% do consumo da geradora é instantâneo (gratuito)
   const injetado      = geracaoMedia - autoconsumo; // energia injetada na rede como crédito
 
-  // ── Passo 2: distribuir créditos proporcionalmente ao consumo de cada UC ──
-  const creditosUC = mediasUC.map(m => injetado * (m / totalMediaUC));
-
-  // ── Passo 3: calcular conta de cada UC ──
+  // ── Passo 2: calcular conta de cada UC com prioridade geradora primeiro ──
   // MODELO CONFIRMADO pelas faturas reais (mar/2026):
-  // - Tarifas TUSD e TE informadas já incluem ICMS embutido
-  // - Conta = consumo×TUSD - compensado×(TUSD-FioB) + consumo×TE - compensado×TE
-  //         = (consumo-compensado)×(TUSD+TE) + compensado×FioB
-  // - Custo mínimo = minKwh × (TUSD+TE) [tarifa cheia sobre o mínimo]
-  // - Na geradora: autoconsumo instantâneo economiza TUSD+TE inteiros
+  // Tarifas TUSD e TE já incluem ICMS. Conta = residual×tarifa + creditoUsado×FioB×pctFioB
+  const tusdInj    = parseFloat(document.getElementById('param-fiob')?.value) || 0.2215;
+  const idxGer     = ucs.indexOf(ucGeradora);
+  const totalBenef = mediasUC.reduce((a,m,j) => j!==idxGer ? a+m : a, 0) || 1;
+  let   creditoRest = injetado; // créditos disponíveis para distribuir
 
-  ucs.forEach((uc, i) => {
-    const mediaUC  = mediasUC[i];
-    const tusdUC   = uc.tusd || 0.2215;
-    const teUC     = uc.te   || 0.2729;
-    const tarifaUC = tusdUC + teUC;                         // tarifa total (já com ICMS)
-    // TUSD de injeção = valor creditado pela distribuidora (< TUSD consumo)
-    const tusdInj  = parseFloat(document.getElementById('param-fiob')?.value) || 0.2215;
-    const fiobDif  = Math.max(0, tusdUC - tusdInj); // diferença = custo que fica para a distribuidora
-    const minKwh   = uc.conexao==='monofasico' ? 30 : uc.conexao==='trifasico' ? 100 : 50;
+  // Processar geradora primeiro, depois beneficiárias
+  const ordemUCs = [idxGer, ...ucs.map((_,i)=>i).filter(i=>i!==idxGer)];
 
-    // Conta atual (sem solar)
-    contaAtualTotal += mediaUC * tarifaUC;
+  ordemUCs.forEach(i => {
+    const uc      = ucs[i];
+    const mediaUC = mediasUC[i];
+    const tusdUC  = uc.tusd || 0.2215;
+    const teUC    = uc.te   || 0.2729;
+    const tarifa  = tusdUC + teUC;
+    const fiobDif = Math.max(0, tusdUC - tusdInj);
+    const minKwh  = uc.conexao==='monofasico' ? 30 : uc.conexao==='trifasico' ? 100 : 50;
 
-    // Autoconsumo instantâneo (só na geradora) — economiza tarifa inteira
-    const inst = uc.geradora ? autoconsumo : 0;
+    contaAtualTotal += mediaUC * tarifa;
 
-    // Crédito disponível para esta UC
-    const creditoDisp    = creditosUC[i];
-    const maxCompensavel = Math.max(0, mediaUC - inst - minKwh);
-    const creditoUsado   = Math.min(creditoDisp, maxCompensavel);
+    // Autoconsumo só na geradora
+    const inst = (i === idxGer) ? autoconsumo : 0;
 
-    // Consumo residual após autoconsumo + compensação
-    const residual = Math.max(0, mediaUC - inst - creditoUsado);
+    // Crédito: geradora tem prioridade, beneficiárias dividem o restante
+    const maxComp = Math.max(0, mediaUC - inst - minKwh);
+    let creditoUC;
+    if(i === idxGer) {
+      creditoUC   = Math.min(creditoRest, maxComp);
+      creditoRest -= creditoUC;
+    } else {
+      creditoUC = Math.min(creditoRest * (mediaUC / totalBenef), maxComp);
+    }
 
-    // ── Conta depois (modelo confirmado pelas faturas reais) ──
-    // Fórmula: conta = (consumo - compensado) × (TUSD+TE) + compensado × FioB_diferença
-    // onde FioB_diferença = TUSD_consumo - TUSD_injeção (escalonado pela Lei 14.300)
-    // TE injetada = TE fornecida (crédito integral, sem desconto)
-    // Conta depois:
-    // residual já inclui o mínimo (maxCompensavel = media - inst - minKwh)
-    // então: conta = residual×tarifa + creditoUsado×FioB×pctFioB
-    // mínimo garantido pois residual >= minKwh sempre
-    const custoMin  = minKwh * tarifaUC;
-    const custoFioB = creditoUsado * fiobDif * pctFioB;
-    const custoRes  = residual * tarifaUC;
-    const contaUC   = Math.max(custoMin, custoFioB + custoRes);
+    const residual = Math.max(0, mediaUC - inst - creditoUC);
+    const custoMin = minKwh * tarifa;
+    const contaUC  = Math.max(custoMin, creditoUC * fiobDif * pctFioB + residual * tarifa);
     contaDepoisTotal += contaUC;
   });
 
