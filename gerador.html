@@ -2390,13 +2390,17 @@ function carregarPropostaParaEdicao(p, editarId) {
   }
 
   // Restaurar UCs salvas
+  console.log('[Edição] dados.ucs:', dados.ucs?.length, JSON.stringify(dados.ucs?.map(u=>u.nome)));
   if(dados.ucs && dados.ucs.length) {
     ucs = [];
     dados.ucs.forEach(u => {
       // Garantir que consumos sejam números (pode vir como strings do JSON)
       if(u.consumos) u.consumos = u.consumos.map(v => parseFloat(v)||0);
+      // Garantir campo excedente (pode não existir em propostas antigas)
+      if(u.excedente == null) u.excedente = 100;
       adicionarUC(u);
     });
+    console.log('[Edição] UCs restauradas:', ucs.length);
   } else if(dados.calc && dados.calc.consumoMes) {
     // Retrocompatibilidade: proposta antiga sem multi-UC
     ucs = [];
