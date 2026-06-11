@@ -1154,6 +1154,13 @@ function calcularFinanceiro() {
     return a + Math.max(0, genUC - auto) * ((uc.excedente??100)/100);
   }, 0);
 
+  // tusdInj e variáveis de controle — definidas aqui para uso no forEach
+  const tusdInjFin  = parseFloat(document.getElementById('param-fiob')?.value) || 0.1490;
+  const idxsGerFin  = (ucs||[]).map((_,i)=>i).filter(i=>(ucs||[])[i]?.geradora);
+  const totalBenefFin = mediasUC.reduce((a,m,j)=>!(ucs||[])[j]?.geradora?a+m:a,0)||1;
+  let creditoParaGerFin  = injetadoFin;
+  let creditoRestBenefFin = injetadoFin;
+
   let contaAtualTotal  = 0;
   let contaDepoisTotal = 0;
 
@@ -1163,26 +1170,19 @@ function calcularFinanceiro() {
     const tusdUC  = uc.tusd||0.2215;
     const teUC    = uc.te||0.2729;
     const tarifa  = tusdUC + teUC;
-    const fiobDif = tusdInj; // Fio B direto (já é a diferença TUSD_consumo - TUSD_injeção)
+    const fiobDif = tusdInjFin;
     const minKwh  = uc.conexao==='monofasico'?30:uc.conexao==='trifasico'?100:50;
 
     contaAtualTotal += mediaUC * tarifa;
 
-    // Autoconsumo só na geradora
-    const inst = (i === idxGer) ? autocons : 0;
-
-    // Crédito: primeiro cobre a geradora até zerar, depois beneficiárias por rateio
+    const inst    = uc.geradora ? mediasUC[i]*((uc.fs||0)/100) : 0;
+    const maxComp = Math.max(0, mediaUC - inst - minKwh);
     let creditoUC;
-    if(i === idxGer) {
-      // Geradora usa créditos até cobrir seu próprio consumo residual (exceto mínimo)
-      const maxGer = Math.max(0, mediaUC - inst - minKwh);
-      creditoUC    = Math.min(creditoDisp, maxGer);
-      creditoDisp  -= creditoUC; // sobra vai para beneficiárias
+    if(uc.geradora) {
+      creditoUC = Math.min(creditoParaGerFin, maxComp);
+      creditoParaGerFin -= creditoUC;
     } else {
-      // Beneficiárias dividem o crédito restante proporcional ao consumo
-      const totalBenef = mediasUC.reduce((a,m,j)=>(j!==idxGer?a+m:a),0)||1;
-      creditoUC = creditoDisp * (mediaUC / totalBenef);
-      creditoUC = Math.min(creditoUC, Math.max(0, mediaUC - minKwh));
+      creditoUC = Math.min(creditoRestBenefFin * (mediaUC / totalBenefFin), maxComp);
     }
 
     const residual  = Math.max(0, mediaUC - inst - creditoUC);
