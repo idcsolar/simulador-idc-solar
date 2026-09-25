@@ -1264,7 +1264,7 @@ function calcularFinanceiro() {
   document.getElementById('fin-economia25').textContent= 'R$ '+Math.round(economia25).toLocaleString('pt-BR');
 
   renderChartFluxo(fluxos, fcl, payback, investimento, calc.tarifa||0.90, custoSolar);
-  window._financeiro = { tir, payback, vpl, economia25, fluxos, fcl, investimento, custoSolar };
+  window._financeiro = { tir, payback, vpl, economia25, fluxos, fcl, investimento, custoSolar, contaAtual: contaAtualTotal, contaDepois: contaDepoisTotal, economiaReal, geracaoMedia: geracaoMediaSetup, kwpReal: kwpSetup };
 }
 
 function renderChartFluxo(fluxos, fcl, payback, investimento, tarifaAtual, custoSolar) {
@@ -1886,10 +1886,11 @@ function renderRevisao() {
       <div>
         <div class="form-section-title">Dimensionamento</div>
         <p style="font-size:13px;margin-bottom:4px;">Consumo médio: <strong>${(calc.media||0).toFixed(0)} kWh/mês</strong></p>
-        <p style="font-size:13px;margin-bottom:4px;">kWp necessário: <strong>${(calc.kwp||0).toFixed(2)} kWp</strong></p>
-        <p style="font-size:13px;margin-bottom:4px;">Conta atual: <strong>${fmtR(calc.contaAtual||0)}/mês</strong></p>
-        <p style="font-size:13px;margin-bottom:4px;">Conta com solar: <strong>${fmtR(calc.contaDepois||0)}/mês</strong></p>
-        <p style="font-size:13px;">Economia: <strong style="color:var(--green)">${fmtR(calc.economia||0)}/mês</strong></p>
+        <p style="font-size:13px;margin-bottom:4px;">kWp ideal: <strong>${(calc.kwp||0).toFixed(2)} kWp</strong> &nbsp;·&nbsp; kWp do projeto: <strong>${(fin.kwpReal||calc.kwp||0).toFixed(2)} kWp</strong></p>
+        <p style="font-size:13px;margin-bottom:4px;">Geração estimada: <strong>${((fin.geracaoMedia||calc.geracaoMedia||0)).toFixed(0)} kWh/mês</strong></p>
+        <p style="font-size:13px;margin-bottom:4px;">Conta atual: <strong>${fmtR(fin.contaAtual||calc.contaAtual||0)}/mês</strong></p>
+        <p style="font-size:13px;margin-bottom:4px;">Conta com solar: <strong>${fmtR(fin.contaDepois||calc.contaDepois||0)}/mês</strong></p>
+        <p style="font-size:13px;">Economia: <strong style="color:var(--green)">${fmtR(fin.economiaReal||calc.economia||0)}/mês</strong></p>
       </div>
     </div>
     <div class="form-section-title">Setups</div>
@@ -1968,9 +1969,9 @@ async function gerarPropostaFinal() {
       geracaoMes:   calc.geracaoMes   || [],
       consumoMes:   getConsumos(), // soma consolidada (retrocompat)
       consumoMesPorUC: ucs.map(u => ({ nome: u.nome, consumos: [...u.consumos] })),
-      contaAtual:   calc.contaAtual   || 0,
-      contaDepois:  calc.contaDepois  || 0,
-      economia:     calc.economia     || 0,
+      contaAtual:   fin.contaAtual  || calc.contaAtual   || 0,
+      contaDepois:  fin.contaDepois || calc.contaDepois  || 0,
+      economia:     fin.economiaReal || calc.economia     || 0,
       media:        calc.media        || 0,
       tarifa:       calc.tarifa       || 0.90,
     },
@@ -2013,7 +2014,7 @@ async function gerarPropostaFinal() {
     consumo_medio:     calc.media        || 0,
     potencia_kwp:      setups[0]?.kwpCalculado || calc.kwp || 0,
     valor_total:       Math.round((setups[0]?.precoFinal || 0) * 100) / 100,
-    economia_estimada: calc.economia     || 0,
+    economia_estimada: fin.economiaReal || calc.economia     || 0,
     payback_anos:      fin.payback       || null,
     status:            'Enviada',
     revisao:           parseInt(document.getElementById('prop-revisao').value) || 0,
@@ -2136,7 +2137,7 @@ async function gerarPropostaFinal() {
       cidade:  proposta.cliente_cidade,
       tipo:    proposta.tipo_projeto,
       conta:   calc.contaAtual ? 'R$ ' + (calc.contaAtual||0).toFixed(2).replace('.',',') : '',
-      economia: calc.economia ? Math.round(calc.economia) : '',
+      economia: (fin.economiaReal||calc.economia) ? Math.round(fin.economiaReal||calc.economia) : '',
       origem:  'Proposta IDC Solar',
       kwp:     proposta.potencia_kwp,
       valor:   parseFloat((proposta.valor_total||0).toFixed(2)),
