@@ -186,20 +186,42 @@ h1{font-family:'Fraunces',serif;font-size:28px;font-weight:700;margin-bottom:8px
             <div style="font-size:12px;font-weight:500;margin-bottom:8px;color:var(--gray-dark);">
               <i class="ph ph-magnifying-glass"></i> Buscar cliente cadastrado
             </div>
-            <input type="text" id="gen-busca-cliente" placeholder="Digite nome ou telefone..."
-              style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;outline:none;"
-              oninput="buscarClienteGerador(this.value)" autocomplete="off"/>
+            <div style="display:flex;gap:8px;">
+              <input type="text" id="gen-busca-cliente" placeholder="Digite nome ou telefone..."
+                style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;outline:none;"
+                oninput="buscarClienteGerador(this.value)" autocomplete="off"/>
+              <button type="button" class="btn btn-outline" style="white-space:nowrap;font-size:12px;padding:8px 14px;flex-shrink:0;"
+                onclick="abrirModalNovoClienteGerador()" title="Cadastrar novo cliente">
+                <i class="ph ph-user-plus"></i> Novo
+              </button>
+            </div>
             <div id="gen-clientes-lista"
               style="display:none;position:absolute;left:14px;right:14px;background:white;border:1px solid var(--border);
                      border-radius:8px;box-shadow:var(--shadow);z-index:50;max-height:200px;overflow-y:auto;"></div>
           </div>
 
           <div class="form-grid">
-            <div class="form-field"><label>Nome completo *</label><input type="text" id="cli-nome" placeholder="Nome do cliente"/></div>
+            <div class="form-field">
+              <label style="display:flex;justify-content:space-between;align-items:center;">
+                Nome completo *
+                <button type="button" onclick="abrirModalNovoClienteGerador()"
+                  style="font-size:11px;padding:2px 10px;border:1px solid var(--orange);border-radius:12px;background:transparent;color:var(--orange);cursor:pointer;font-family:inherit;font-weight:600;">
+                  + Novo cliente
+                </button>
+              </label>
+              <input type="text" id="cli-nome" placeholder="Nome do cliente"/>
+            </div>
             <div class="form-field"><label>CPF / CNPJ</label><input type="text" id="cli-doc" placeholder="000.000.000-00"/></div>
             <div class="form-field"><label>Telefone / WhatsApp *</label><input type="tel" id="cli-fone" maxlength="15" placeholder="(00) 00000-0000" oninput="mascaraTel(this)"/></div>
             <div class="form-field"><label>E-mail</label><input type="email" id="cli-email" placeholder="cliente@email.com"/></div>
             <div class="form-field full"><label>Endereço de instalação</label><input type="text" id="cli-endereco" placeholder="Rua, número, bairro, cidade/SP"/></div>
+            <div class="form-field" style="max-width:260px;">
+              <label>Cidade (para HSP automático)</label>
+              <input type="text" id="cli-cidade-hsp" placeholder="Ex: São Paulo / SP"
+                oninput="propagarCidadeParaHSP(this.value)"
+                style="border:1.5px solid var(--orange);"/>
+              <span class="hint">Preenchido automaticamente na aba de dimensionamento</span>
+            </div>
             <div class="form-field"><label>Vendedor responsável</label>
               <select id="cli-vendedor">
                 <option value="">Selecione o vendedor...</option>
@@ -288,7 +310,7 @@ h1{font-family:'Fraunces',serif;font-size:28px;font-weight:700;margin-bottom:8px
           <div class="form-field">
             <label>Cidade *</label>
             <div class="autocomplete-wrap">
-              <input type="text" id="proj-cidade" placeholder="Digite o nome da cidade..." oninput="buscarCidade(this.value)" autocomplete="off"/>
+              <input type="text" id="proj-cidade" placeholder="Digite o nome da cidade..." oninput="this.dataset.manualEdit='1';buscarCidade(this.value)" autocomplete="off"/>
               <div class="autocomplete-list" id="cidade-list"></div>
             </div>
           </div>
@@ -561,6 +583,11 @@ function salvarCondicoesPagamento() {
 function goStep(n) {
   // Salva condições de pagamento ao sair da etapa 4
   if(n === 5) salvarCondicoesPagamento();
+  // Busca HSP automaticamente ao entrar na etapa 2 se cidade já preenchida
+  if(n === 2 && !hspSelecionado) {
+    const cidadeEl = document.getElementById('proj-cidade');
+    if(cidadeEl && cidadeEl.value.trim().length > 3) setTimeout(buscarHSP, 200);
+  }
 
   for(let i=1;i<=5;i++){
     document.getElementById('step-'+i).style.display = i===n ? 'block' : 'none';
@@ -1264,7 +1291,7 @@ function calcularFinanceiro() {
   document.getElementById('fin-economia25').textContent= 'R$ '+Math.round(economia25).toLocaleString('pt-BR');
 
   renderChartFluxo(fluxos, fcl, payback, investimento, calc.tarifa||0.90, custoSolar);
-  window._financeiro = { tir, payback, vpl, economia25, fluxos, fcl, investimento, custoSolar, contaAtual: contaAtualTotal, contaDepois: contaDepoisTotal, economiaReal, geracaoMedia: geracaoMediaSetup, kwpReal: kwpSetup };
+  window._financeiro = { tir, payback, vpl, economia25, fluxos, fcl, investimento, custoSolar, contaAtual: contaAtualTotal, contaDepois: contaDepoisTotal, economiaReal, geracaoMedia: geracaoMediaSetup, geracaoMes: geracaoMesSetup, kwpReal: kwpSetup };
 }
 
 function renderChartFluxo(fluxos, fcl, payback, investimento, tarifaAtual, custoSolar) {
@@ -1433,11 +1460,18 @@ function renderSetups() {
           ${paineisDB.length ? `
           <div class="form-field" style="margin-bottom:12px;">
             <label>Selecionar painel cadastrado</label>
-            <select onchange="preencherPainel(${idx},this.value)">
-              <option value="">— Preencher manualmente —</option>
-              ${painelOpts}
-            </select>
-          </div>` : ''}
+            <div style="display:flex;gap:6px;">
+              <select onchange="preencherPainel(${idx},this.value)" style="flex:1;">
+                <option value="">— Preencher manualmente —</option>
+                ${painelOpts}
+              </select>
+              <button type="button" class="btn btn-outline" style="font-size:11px;padding:6px 10px;flex-shrink:0;"
+                onclick="abrirModalNovoEquipamentoGerador('painel')" title="Cadastrar novo painel">
+                <i class="ph ph-plus"></i> Novo
+              </button>
+            </div>
+          </div>` : `<div style="margin-bottom:8px;"><button type="button" class="btn btn-outline" style="font-size:12px;"
+            onclick="abrirModalNovoEquipamentoGerador('painel')"><i class="ph ph-plus"></i> Cadastrar painel</button></div>`}
           <div class="form-grid-3">
             <div class="form-field"><label>Quantidade *</label>
               <input type="number" id="s${idx}-qtd-mod" value="${s.qtdModulos}" placeholder="Ex: 8" min="1"
@@ -1469,11 +1503,18 @@ function renderSetups() {
           ${inversoresDB.length ? `
           <div class="form-field" style="margin-bottom:12px;">
             <label>Selecionar inversor cadastrado</label>
-            <select onchange="preencherInversor(${idx},this.value)">
-              <option value="">— Preencher manualmente —</option>
-              ${inversorOpts}
-            </select>
-          </div>` : ''}
+            <div style="display:flex;gap:6px;">
+              <select onchange="preencherInversor(${idx},this.value)" style="flex:1;">
+                <option value="">— Preencher manualmente —</option>
+                ${inversorOpts}
+              </select>
+              <button type="button" class="btn btn-outline" style="font-size:11px;padding:6px 10px;flex-shrink:0;"
+                onclick="abrirModalNovoEquipamentoGerador('inversor')" title="Cadastrar novo inversor">
+                <i class="ph ph-plus"></i> Novo
+              </button>
+            </div>
+          </div>` : `<div style="margin-bottom:8px;"><button type="button" class="btn btn-outline" style="font-size:12px;"
+            onclick="abrirModalNovoEquipamentoGerador('inversor')"><i class="ph ph-plus"></i> Cadastrar inversor</button></div>`}
           <div class="form-grid-3">
             <div class="form-field"><label>Tipo</label>
               <select id="s${idx}-tipo-inv" onchange="setups[${idx}].tipoInversor=this.value;atualizarMicroQtd(${idx})">
@@ -1742,14 +1783,24 @@ function calcPrecoSetup(idx) {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
 
         <!-- À vista -->
-        <div style="background:white;border:1px solid var(--border);border-radius:10px;padding:14px;">
-          <div style="font-size:11px;font-weight:700;color:var(--gray-dark);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em;">À vista</div>
+        <div style="background:white;border:1px solid var(--border);border-radius:10px;padding:14px;opacity:${s._showAvista===false?'0.4':'1'}">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <div style="font-size:11px;font-weight:700;color:var(--gray-dark);text-transform:uppercase;letter-spacing:.06em;">À vista</div>
+            <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--gray);cursor:pointer;">
+              <input type="checkbox" ${s._showAvista!==false?'checked':''} onchange="setups[${idx}]._showAvista=this.checked;renderPrecoSetup(${idx})" style="accent-color:var(--orange);width:13px;height:13px;"/>Exibir
+            </label>
+          </div>
           <div style="font-size:18px;font-weight:700;color:var(--black);">${fmtR(precoFinal)}</div>
         </div>
 
         <!-- Financiamento IDC -->
-        <div style="background:white;border:1px solid var(--border);border-radius:10px;padding:14px;">
-          <div style="font-size:11px;font-weight:700;color:var(--gray-dark);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em;">Financiamento IDC</div>
+        <div style="background:white;border:1px solid var(--border);border-radius:10px;padding:14px;opacity:${s._showFinanc===false?'0.4':'1'}">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <div style="font-size:11px;font-weight:700;color:var(--gray-dark);text-transform:uppercase;letter-spacing:.06em;">Financiamento IDC</div>
+            <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--gray);cursor:pointer;">
+              <input type="checkbox" ${s._showFinanc!==false?'checked':''} onchange="setups[${idx}]._showFinanc=this.checked;renderPrecoSetup(${idx})" style="accent-color:var(--orange);width:13px;height:13px;"/>Exibir
+            </label>
+          </div>
           <div style="display:flex;flex-direction:column;gap:6px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
               <label style="font-size:11px;color:var(--gray);">Entrada (R$)</label>
@@ -1768,8 +1819,13 @@ function calcPrecoSetup(idx) {
         </div>
 
         <!-- Cartão de crédito - equipamentos -->
-        <div style="background:white;border:1px solid var(--border);border-radius:10px;padding:14px;">
-          <div style="font-size:11px;font-weight:700;color:var(--gray-dark);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em;">Cartão — Equipamentos</div>
+        <div style="background:white;border:1px solid var(--border);border-radius:10px;padding:14px;opacity:${s._showCcKit===false?'0.4':'1'}">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <div style="font-size:11px;font-weight:700;color:var(--gray-dark);text-transform:uppercase;letter-spacing:.06em;">Cartão — Equipamentos</div>
+            <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--gray);cursor:pointer;">
+              <input type="checkbox" ${s._showCcKit!==false?'checked':''} onchange="setups[${idx}]._showCcKit=this.checked;renderPrecoSetup(${idx})" style="accent-color:var(--orange);width:13px;height:13px;"/>Exibir
+            </label>
+          </div>
           <div style="display:flex;flex-direction:column;gap:6px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
               <label style="font-size:11px;color:var(--gray);">Valor kit (R$)</label>
@@ -1788,8 +1844,13 @@ function calcPrecoSetup(idx) {
         </div>
 
         <!-- Cartão de crédito - serviços -->
-        <div style="background:white;border:1px solid var(--border);border-radius:10px;padding:14px;">
-          <div style="font-size:11px;font-weight:700;color:var(--gray-dark);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em;">Cartão — Serviços</div>
+        <div style="background:white;border:1px solid var(--border);border-radius:10px;padding:14px;opacity:${s._showCcSvc===false?'0.4':'1'}">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <div style="font-size:11px;font-weight:700;color:var(--gray-dark);text-transform:uppercase;letter-spacing:.06em;">Cartão — Serviços</div>
+            <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--gray);cursor:pointer;">
+              <input type="checkbox" ${s._showCcSvc!==false?'checked':''} onchange="setups[${idx}]._showCcSvc=this.checked;renderPrecoSetup(${idx})" style="accent-color:var(--orange);width:13px;height:13px;"/>Exibir
+            </label>
+          </div>
           <div style="display:flex;flex-direction:column;gap:6px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
               <label style="font-size:11px;color:var(--gray);">Valor serviços (R$)</label>
@@ -1965,8 +2026,8 @@ async function gerarPropostaFinal() {
     setups: setups.map(s => ({...s})),
     calc: {
       kwp:          calc.kwp          || 0,
-      geracaoMedia: calc.geracaoMedia || 0,
-      geracaoMes:   calc.geracaoMes   || [],
+      geracaoMedia: fin.geracaoMedia || calc.geracaoMedia || 0,
+      geracaoMes:   fin.geracaoMes  || calc.geracaoMes   || [],
       consumoMes:   getConsumos(), // soma consolidada (retrocompat)
       consumoMesPorUC: ucs.map(u => ({ nome: u.nome, consumos: [...u.consumos] })),
       contaAtual:   fin.contaAtual  || calc.contaAtual   || 0,
@@ -1989,12 +2050,15 @@ async function gerarPropostaFinal() {
       fs:                ucs[0]?.fs || 70,
       hsp:               cidadeSelecionada,
       consumo_extra_pct: parseFloat(document.getElementById('consumo-extra')?.value) || 0,
-      infE:  parseFloat(document.getElementById('fin-inf-energia').value) || 10,
-      infA:  parseFloat(document.getElementById('fin-inf-anual').value)   || 4,
-      deg1:  parseFloat(document.getElementById('fin-deg1').value)        || 2,
-      degN:  parseFloat(document.getElementById('fin-deg').value)         || 0.5,
-      manut: parseFloat(document.getElementById('fin-manut').value)       || 0.5,
-      vida:  parseInt(document.getElementById('fin-vida').value)          || 25,
+      infEnergia: parseFloat(document.getElementById('fin-inf-energia').value) || 10,
+      infAnual:   parseFloat(document.getElementById('fin-inf-anual').value)   || 4,
+      taxaJuros:  parseFloat(document.getElementById('fin-taxa-juros').value)  || 6,
+      custoOp:    parseFloat(document.getElementById('fin-custo-op').value)    || 10,
+      deg1:       parseFloat(document.getElementById('fin-deg1').value)        || 2,
+      deg:        parseFloat(document.getElementById('fin-deg').value)         || 0.5,
+      manut:      parseFloat(document.getElementById('fin-manut').value)       || 0.5,
+      vida:       parseInt(document.getElementById('fin-vida').value)          || 25,
+      fiob:       parseFloat(document.getElementById('param-fiob')?.value)    || 0.1490,
     }
   };
 
@@ -2233,7 +2297,7 @@ function novaPropostaCompleto() {
   window._financeiro = null;
   cidadeSelecionada = null;
   hspSelecionado = null;
-  ['cli-nome','cli-doc','cli-fone','cli-email','cli-endereco','proj-cidade'].forEach(id=>{
+  ['cli-nome','cli-doc','cli-fone','cli-email','cli-endereco','proj-cidade','cli-cidade-hsp'].forEach(id=>{
     const el = document.getElementById(id); if(el) el.value = '';
   });
   const hoje = new Date();
@@ -2306,6 +2370,167 @@ function getConcessionaria() {
 }
 
 // ── INICIALIZAÇÃO ──
+// ── MODAL NOVO CLIENTE RÁPIDO (sem sair do gerador) ──
+function abrirModalNovoClienteGerador() {
+  // Criar modal inline
+  const existing = document.getElementById('modal-novo-cli-gen');
+  if(existing) { existing.style.display='flex'; return; }
+
+  const modal = document.createElement('div');
+  modal.id = 'modal-novo-cli-gen';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  modal.innerHTML = `
+    <div style="background:white;border-radius:16px;padding:24px;width:90%;max-width:480px;box-shadow:0 8px 40px rgba(0,0,0,.2);">
+      <div style="font-size:16px;font-weight:700;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">
+        <span><i class="ph ph-user-plus"></i> Cadastrar novo cliente</span>
+        <button onclick="document.getElementById('modal-novo-cli-gen').style.display='none'"
+          style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--gray);">✕</button>
+      </div>
+      <div style="display:grid;gap:12px;">
+        <div><label style="font-size:12px;font-weight:600;color:var(--gray-dark);">Nome *</label>
+          <input id="ncg-nome" type="text" placeholder="Nome completo" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;margin-top:4px;box-sizing:border-box;"/></div>
+        <div><label style="font-size:12px;font-weight:600;color:var(--gray-dark);">WhatsApp *</label>
+          <input id="ncg-fone" type="text" placeholder="(11) 99999-9999" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;margin-top:4px;box-sizing:border-box;"/></div>
+        <div><label style="font-size:12px;font-weight:600;color:var(--gray-dark);">E-mail</label>
+          <input id="ncg-email" type="email" placeholder="email@exemplo.com" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;margin-top:4px;box-sizing:border-box;"/></div>
+        <div><label style="font-size:12px;font-weight:600;color:var(--gray-dark);">Endereço</label>
+          <input id="ncg-end" type="text" placeholder="Rua, número, bairro, cidade/SP" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;margin-top:4px;box-sizing:border-box;"/></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;">
+        <button onclick="document.getElementById('modal-novo-cli-gen').style.display='none'"
+          class="btn btn-outline">Cancelar</button>
+        <button onclick="salvarNovoClienteGerador()" class="btn btn-primary">
+          <i class="ph ph-floppy-disk"></i> Salvar e usar
+        </button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+async function salvarNovoClienteGerador() {
+  const nome  = document.getElementById('ncg-nome')?.value?.trim();
+  const fone  = document.getElementById('ncg-fone')?.value?.trim();
+  const email = document.getElementById('ncg-email')?.value?.trim();
+  const end   = document.getElementById('ncg-end')?.value?.trim();
+
+  if(!nome || !fone) { toast('Nome e WhatsApp são obrigatórios.'); return; }
+
+  const token = sessionStorage.getItem('supa_token');
+  if(!token) { toast('Sessão expirada. Faça login novamente.'); return; }
+
+  try {
+    const r = await fetch(SUPA_URL + '/rest/v1/clientes', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'apikey': SUPA_KEY, 'Authorization': 'Bearer '+token,
+                 'Prefer':'return=representation' },
+      body: JSON.stringify({ nome, telefone: fone, email: email||null, endereco: end||null })
+    });
+    const data = await r.json();
+    if(!r.ok) throw new Error(data.message || 'Erro ao salvar');
+
+    const cli = data[0] || data;
+    // Preencher campos do gerador com o novo cliente
+    const set = (id, val) => { const el=document.getElementById(id); if(el && val) el.value=val; };
+    set('cli-nome',  cli.nome);
+    set('cli-fone',  cli.telefone);
+    set('cli-email', cli.email);
+    set('cli-endereco', cli.endereco);
+    set('cli-id', cli.id);
+
+    document.getElementById('modal-novo-cli-gen').style.display = 'none';
+    toast('Cliente cadastrado e selecionado!');
+  } catch(e) {
+    toast('Erro ao cadastrar cliente: ' + e.message);
+  }
+}
+
+// ── SALVAR EQUIPAMENTO RÁPIDO (sem sair do gerador) ──
+function abrirModalNovoEquipamentoGerador(tipo) {
+  // tipo: 'painel' ou 'inversor'
+  const existing = document.getElementById('modal-novo-equip-gen');
+  if(existing) existing.remove();
+
+  const isPainel = tipo === 'painel';
+  const modal = document.createElement('div');
+  modal.id = 'modal-novo-equip-gen';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  modal.innerHTML = `
+    <div style="background:white;border-radius:16px;padding:24px;width:90%;max-width:480px;box-shadow:0 8px 40px rgba(0,0,0,.2);">
+      <div style="font-size:16px;font-weight:700;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">
+        <span><i class="ph ph-${isPainel?'sun':'lightning'}"></i> Novo ${isPainel?'painel':'inversor'}</span>
+        <button onclick="document.getElementById('modal-novo-equip-gen').remove()"
+          style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--gray);">✕</button>
+      </div>
+      <div style="display:grid;gap:10px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div><label style="font-size:12px;font-weight:600;">Marca *</label>
+            <input id="neq-marca" type="text" placeholder="Ex: Canadian Solar" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;margin-top:4px;box-sizing:border-box;"/></div>
+          <div><label style="font-size:12px;font-weight:600;">Modelo *</label>
+            <input id="neq-modelo" type="text" placeholder="Ex: CS6R-405MS" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;margin-top:4px;box-sizing:border-box;"/></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div><label style="font-size:12px;font-weight:600;">${isPainel?'Potência (Wp)':'Potência (kW)'} *</label>
+            <input id="neq-pot" type="number" placeholder="${isPainel?'Ex: 405':'Ex: 6.0'}" step="${isPainel?'1':'0.1'}" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;margin-top:4px;box-sizing:border-box;"/></div>
+          ${isPainel?`<div><label style="font-size:12px;font-weight:600;">Tecnologia</label>
+            <select id="neq-tec" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;margin-top:4px;">
+              <option value="">Selecione...</option>
+              <option>Monocristalino</option><option>Policristalino</option>
+              <option>Monocristalino PERC</option><option>Monocristalino TOPCon</option>
+              <option>Monocristalino HJT</option><option>Bifacial</option><option>Filme Fino</option>
+            </select></div>`:`<div><label style="font-size:12px;font-weight:600;">Nº INMETRO</label>
+            <input id="neq-inmetro" type="text" placeholder="Ex: 003/2024" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;margin-top:4px;box-sizing:border-box;"/></div>`}
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;">
+        <button onclick="document.getElementById('modal-novo-equip-gen').remove()" class="btn btn-outline">Cancelar</button>
+        <button onclick="salvarNovoEquipamentoGerador('${tipo}')" class="btn btn-primary">
+          <i class="ph ph-floppy-disk"></i> Salvar e usar
+        </button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+async function salvarNovoEquipamentoGerador(tipo) {
+  const marca  = document.getElementById('neq-marca')?.value?.trim();
+  const modelo = document.getElementById('neq-modelo')?.value?.trim();
+  const pot    = parseFloat(document.getElementById('neq-pot')?.value);
+  if(!marca || !modelo || !pot) { toast('Marca, modelo e potência são obrigatórios.'); return; }
+
+  const token = sessionStorage.getItem('supa_token');
+  if(!token) { toast('Sessão expirada.'); return; }
+
+  const isPainel = tipo === 'painel';
+  const tabela   = isPainel ? 'paineis' : 'inversores';
+  const body     = isPainel
+    ? { marca, modelo, potencia_w: pot, tecnologia: document.getElementById('neq-tec')?.value || null }
+    : { marca, modelo, potencia_kw: pot, numero_inmetro: document.getElementById('neq-inmetro')?.value || null };
+
+  try {
+    const r = await fetch(SUPA_URL + '/rest/v1/' + tabela, {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+token,'Prefer':'return=representation' },
+      body: JSON.stringify(body)
+    });
+    const data = await r.json();
+    if(!r.ok) throw new Error(data.message || 'Erro');
+    document.getElementById('modal-novo-equip-gen').remove();
+    toast(`${isPainel?'Painel':'Inversor'} salvo! Recarregando equipamentos...`);
+    await carregarEquipamentosDB();
+  } catch(e) { toast('Erro: ' + e.message); }
+}
+
+function propagarCidadeParaHSP(cidade) {
+  // Copia cidade para o campo proj-cidade (aba 2) e dispara busca de HSP
+  if(!cidade || cidade.length < 3) return;
+  const el2 = document.getElementById('proj-cidade');
+  if(el2 && !el2.dataset.manualEdit) {
+    el2.value = cidade;
+    clearTimeout(window._hspTimer);
+    window._hspTimer = setTimeout(() => buscarCidade(cidade), 600);
+  }
+}
+
 document.addEventListener('DOMContentLoaded', ()=>{
   const hoje = new Date();
   const ano = String(hoje.getFullYear()).slice(2);
@@ -2356,6 +2581,35 @@ function carregarPropostaParaEdicao(p, editarId) {
   set('cli-email',   p.cliente_email);
   set('prop-numero', p.prop_numero || p.numero);
   set('prop-revisao',(p.revisao||0) + 1);
+
+  // Restaurar campos de instalação
+  set('proj-telhado',      p.tipo_telhado);
+  set('proj-conexao',      p.tipo_conexao);
+  set('proj-categoria',    p.tipo_projeto);
+  set('proj-tipo-sistema', p.tipo_projeto);
+  set('prop-validade',     p.validade_dias || 30);
+  set('cli-cidade-hsp',    p.cliente_cidade);
+  // Restaurar area e outros campos do dados_proposta
+  if(p.dados_proposta) {
+    try {
+      const dp = typeof p.dados_proposta === 'string' ? JSON.parse(p.dados_proposta) : p.dados_proposta;
+      if(dp.params) {
+        const pp = dp.params;
+        const setP = (id,v) => { const e=document.getElementById(id); if(e&&v!=null) e.value=v; };
+        setP('param-perdas', pp.perdas);
+        setP('param-fiob',   pp.fiob || pp.tusdInj);
+        setP('consumo-extra', pp.consumo_extra_pct);
+        setP('fin-inf-energia', pp.infEnergia);
+        setP('fin-inf-anual',   pp.infAnual);
+        setP('fin-taxa-juros',  pp.taxaJuros);
+        setP('fin-custo-op',    pp.custoOp);
+        setP('fin-deg1',        pp.deg1);
+        setP('fin-deg',         pp.deg);
+        setP('fin-manut',       pp.manut);
+        setP('fin-vida',        pp.vida);
+      }
+    } catch(e) { console.warn('Erro ao restaurar params:', e); }
+  }
 
   if(p.cliente_cidade) {
     const cidEl = document.getElementById('proj-cidade');
@@ -2429,6 +2683,74 @@ function carregarPropostaParaEdicao(p, editarId) {
   goStep(1);
   toast('Proposta carregada para edi\u00e7\u00e3o!');
 }
+
+// ── Cadastro inline de cliente no gerador ──
+function abrirModalNovoClienteGerador() {
+  const nome = document.getElementById('cli-nome')?.value || '';
+  if(nome) document.getElementById('ncg-nome').value = nome;
+  document.getElementById('ncg-fone').value  = document.getElementById('cli-fone')?.value || '';
+  document.getElementById('ncg-email').value = document.getElementById('cli-email')?.value || '';
+  document.getElementById('ncg-msg').textContent = '';
+  document.getElementById('modal-novo-cliente-ger').style.display = 'flex';
+}
+
+async function salvarNovoClienteGerador() {
+  const nome = document.getElementById('ncg-nome').value.trim();
+  const fone = document.getElementById('ncg-fone').value.trim();
+  if(!nome || !fone) { document.getElementById('ncg-msg').textContent = 'Nome e telefone obrigatórios.'; return; }
+
+  const token = sessionStorage.getItem('supa_token') || localStorage.getItem('idc_admin_token');
+  const dados = {
+    nome, telefone: fone,
+    email:    document.getElementById('ncg-email').value.trim() || null,
+    cpf:      document.getElementById('ncg-doc').value.trim()   || null,
+    endereco: document.getElementById('ncg-endereco').value.trim() || null,
+  };
+
+  try {
+    const r = await fetch(SUPA_URL + '/rest/v1/clientes', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+token,
+                 'apikey': SUPA_KEY, 'Prefer':'return=representation' },
+      body: JSON.stringify(dados)
+    });
+    if(!r.ok) throw new Error(await r.text());
+    const [cli] = await r.json();
+    // Preencher campos do gerador com o cliente recém-criado
+    document.getElementById('cli-nome').value    = cli.nome;
+    document.getElementById('cli-fone').value    = cli.telefone || fone;
+    document.getElementById('cli-email').value   = cli.email || '';
+    document.getElementById('cli-doc').value     = cli.cpf   || '';
+    document.getElementById('cli-endereco').value= cli.endereco || '';
+    document.getElementById('modal-novo-cliente-ger').style.display = 'none';
+    toast('Cliente cadastrado com sucesso!');
+  } catch(e) {
+    document.getElementById('ncg-msg').textContent = 'Erro: ' + e.message;
+  }
+}
 </script>
+
+<!-- MODAL NOVO CLIENTE (inline no gerador) -->
+<div id="modal-novo-cliente-ger" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:16px;padding:28px;width:90%;max-width:520px;max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <div style="font-size:18px;font-weight:700;">Novo Cliente</div>
+      <button onclick="document.getElementById('modal-novo-cliente-ger').style.display='none'"
+        style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--gray);">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-field full"><label>Nome completo *</label><input type="text" id="ncg-nome" placeholder="Nome do cliente"/></div>
+      <div class="form-field"><label>CPF / CNPJ</label><input type="text" id="ncg-doc" placeholder="000.000.000-00"/></div>
+      <div class="form-field"><label>Telefone *</label><input type="tel" id="ncg-fone" placeholder="(00) 00000-0000" oninput="mascaraTel(this)"/></div>
+      <div class="form-field full"><label>E-mail</label><input type="email" id="ncg-email" placeholder="cliente@email.com"/></div>
+      <div class="form-field full"><label>Endereço</label><input type="text" id="ncg-endereco" placeholder="Rua, número, bairro, cidade/UF"/></div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
+      <button class="btn btn-outline" onclick="document.getElementById('modal-novo-cliente-ger').style.display='none'">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarNovoClienteGerador()">Salvar cliente</button>
+    </div>
+    <div id="ncg-msg" style="margin-top:10px;font-size:13px;"></div>
+  </div>
+</div>
 </body>
 </html>

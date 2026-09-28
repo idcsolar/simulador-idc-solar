@@ -1311,29 +1311,38 @@ function renderCondicoes(setupsArr) {
   const htmlHeader = '<table class="cond-table"><thead><tr><th>Condição</th>' +
     setupsArr.map(s=>`<th>${s.nome||'Setup'}</th>`).join('') + '</tr></thead><tbody>';
 
-  const rows = [
-    ['Valor à vista', s => fmtR(s.precoFinal||0)],
-    ['Financiamento IDC', s => {
+  // Respeitar flags _show de cada condição (configurado no gerador)
+  const allRows = [
+    { label: 'Valor à vista',    show: s => s._showAvista  !== false, fn: s => fmtR(s.precoFinal||0) },
+    { label: 'Financiamento IDC', show: s => s._showFinanc !== false, fn: s => {
       const v    = s.precoFinal || 0;
       const ent  = s._finEntrada  > 0 ? s._finEntrada  : Math.round(v * 0.5);
       const nP   = s._finParcelas > 0 ? s._finParcelas : 3;
       const parc = nP > 0 ? (v - ent) / nP : 0;
       return `Ent.: ${fmtR(ent)} + ${nP}x de ${fmtR(parc)}`;
-    }],
-    ['Cartão de crédito', s => {
+    }},
+    { label: 'Cartão — Equipamentos', show: s => s._showCcKit !== false, fn: s => {
       const v       = s.precoFinal || 0;
       const kit     = s._ccKit     > 0 ? s._ccKit     : (s.precoKit || v * 0.7);
       const kitParc = s._ccKitParc > 0 ? s._ccKitParc : 21;
-      const svc     = s._ccSvc     > 0 ? s._ccSvc     : (v - kit);
-      const svcParc = s._ccSvcParc > 0 ? s._ccSvcParc : 6;
       const parcKit = kitParc > 0 ? kit / kitParc : 0;
+      return `Até ${kitParc}x de ${fmtR(parcKit)}`;
+    }},
+    { label: 'Cartão — Serviços', show: s => s._showCcSvc !== false, fn: s => {
+      const v       = s.precoFinal || 0;
+      const kit     = s._ccKit     > 0 ? s._ccKit     : (s.precoKit || v * 0.7);
+      const svc     = s._ccSvc     >= 0 ? s._ccSvc    : (v - kit);
+      const svcParc = s._ccSvcParc > 0 ? s._ccSvcParc : 6;
       const parcSvc = svcParc > 0 ? svc / svcParc : 0;
-      return `Equipamentos: Até ${kitParc}x ${fmtR(parcKit)}<br>Mão de obra + engenharia: Até ${svcParc}x ${fmtR(parcSvc)}`;
-    }]
+      return `Até ${svcParc}x de ${fmtR(parcSvc)}`;
+    }},
   ];
 
-  const htmlRows = rows.map(([label, fn]) =>
-    `<tr><td>${label}</td>${setupsArr.map(s=>`<td>${fn(s)}</td>`).join('')}</tr>`
+  // Filtrar linhas onde pelo menos 1 setup mostra aquela condição
+  const rows = allRows.filter(r => setupsArr.some(s => r.show(s)));
+
+  const htmlRows = rows.map(r =>
+    `<tr><td>${r.label}</td>${setupsArr.map(s => r.show(s) ? `<td>${r.fn(s)}</td>` : '<td>—</td>').join('')}</tr>`
   ).join('');
 
   cont.innerHTML = '<div class="cond-table-wrap">' + htmlHeader + htmlRows + '</tbody></table></div>';
